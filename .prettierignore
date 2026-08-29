@@ -1,0 +1,7 @@
+node_modules/
+.bun-cache/
+bun.lock
+go.sum
+
+# Written by the release job, not by hand.
+CHANGELOG.md

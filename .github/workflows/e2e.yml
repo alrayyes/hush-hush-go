@@ -1,0 +1,36 @@
+# A handful of real-network smoke tests against a real hush-hush instance.
+# Deliberately excluded from the default PR pipeline (ci.yml) — see
+# design.md's testing layers: this is the thin, deliberately sparse layer,
+# not a substitute for the unit/contract tests that run on every PR.
+name: e2e
+
+on:
+  schedule:
+    - cron: "0 7 * * *" # nightly, 07:00 UTC
+  workflow_dispatch:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-24.04
+    # Skips cleanly until a maintainer sets these two repo secrets (Settings
+    # → Actions → secrets a bot account can't read or set for someone else's
+    # repo — see repo-creation skill's RELEASE_TOKEN note for why this is a
+    # manual step). A missing secret and a wrong one look identical from
+    # outside; this at least avoids nightly failure noise for "not set up
+    # yet" specifically.
+    if: ${{ secrets.HUSH_HUSH_STAGING_URL != '' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: Run smoke tests against staging hush-hush
+        run: go test -tags=e2e ./e2e/...
+        env:
+          HUSH_HUSH_BASE_URL: ${{ secrets.HUSH_HUSH_STAGING_URL }}
+          HUSH_HUSH_API_KEY: ${{ secrets.HUSH_HUSH_STAGING_API_KEY }}

@@ -1,0 +1,10 @@
+# oapi-codegen config for client.gen.go. Regenerating (`go generate ./...`)
+# must always target hush-hush/api/openapi.yaml — the pinned submodule copy,
+# never a local edit. See CONTRIBUTING.md's "The spec" section.
+package: genclient
+output: internal/genclient/client.gen.go
+generate:
+  models: true
+  client: true
+output-options:
+  skip-prune: false

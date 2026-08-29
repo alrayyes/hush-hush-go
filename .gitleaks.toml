@@ -1,0 +1,10 @@
+# Secret scanning for hush-hush-go.
+#
+# Extends the ruleset that ships with the pinned gitleaks version rather than
+# replacing it, so new upstream rules arrive with the version bump.
+#
+# Nothing is allowlisted yet. Add an entry here rather than reaching for an
+# ignore comment if this ever needs one.
+
+[extend]
+useDefault = true

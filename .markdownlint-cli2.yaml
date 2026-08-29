@@ -1,0 +1,18 @@
+# Markdown this repo owns. The README is the first thing an integrator reads
+# off this SDK, and a broken link or a skipped heading level is exactly the
+# sort of thing nobody notices while writing it.
+globs:
+  - "**/*.md"
+
+ignores:
+  - CHANGELOG.md # written by the release job, not by hand
+  - "**/node_modules/**"
+  - "**/.bun-cache/**"
+
+config:
+  line-length:
+    line_length: 80
+    tables: false
+    code_blocks: false
+
+extends: "markdownlint/style/prettier"

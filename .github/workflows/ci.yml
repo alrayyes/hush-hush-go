@@ -1,0 +1,170 @@
+# The gate. Every command in here has a twin in lefthook.yml, so a green
+# pre-commit means a green pipeline and neither can drift into being the only
+# place a rule is enforced.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GOLANGCI_LINT_VERSION: v2.13.1
+
+jobs:
+  lint:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: recursive
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
+        with:
+          version: ${{ env.GOLANGCI_LINT_VERSION }}
+      - name: gofmt
+        run: gofmt -l . | (! grep .)
+
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: recursive
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: go test (hand-written layer only; see design.md's testing layers)
+        run: go test -race -covermode=atomic -coverprofile=coverage.out ./...
+      - name: Report coverage
+        run: |
+          go tool cover -func=coverage.out | tail -1 |
+            awk '{ print "**Coverage: " $3 "**" }' >> "$GITHUB_STEP_SUMMARY"
+
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: recursive
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - run: go build ./...
+
+  gomod:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: go mod edit -fmt
+        run: go mod edit -fmt go.mod && git diff --exit-code go.mod
+
+  # Proves the generated client wasn't hand-edited: regenerating from the
+  # pinned submodule commit must produce a byte-identical file. See
+  # design.md's "Generated/hand-written boundary" decision.
+  codegen-drift:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: recursive
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - run: go generate ./...
+      - run: git diff --exit-code internal/genclient/client.gen.go
+
+  markdown:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+      - name: bun install
+        run: bun install --frozen-lockfile
+      - name: prettier --check
+        run: bun run format:check
+      - name: markdownlint
+        run: bun run lint:md
+
+  # Contract-test the client against a mock server built from the same pinned
+  # spec, per rules/sdk-generation.md's "testing against the spec, not a
+  # hand-written stub".
+  contract:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: recursive
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: Start Prism mock from the pinned spec
+        run: |
+          docker run -d --name prism -p 4010:4010 \
+            stoplight/prism:5 mock -h 0.0.0.0 /spec/openapi.yaml \
+            -v /"$(pwd)"/api:/spec:ro
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:4010 >/dev/null 2>&1 && break
+            sleep 1
+          done
+      - name: Run contract tests against the mock
+        run: go test -tags=contract ./contract/...
+        env:
+          HUSH_HUSH_BASE_URL: http://localhost:4010
+
+  # Records the client's real interactions as a Pact consumer contract.
+  # Provider verification against hush-hush's actual server has to run in
+  # hush-hush's own CI (see design.md's Risks — an external dependency this
+  # repo can't wire up unilaterally); this job's job is only to keep
+  # producing an up-to-date pact file for that to consume.
+  pact-consumer:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: recursive
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: Install the Pact native library
+        run: |
+          go install github.com/pact-foundation/pact-go/v2@v2.0.9
+          sudo "$(go env GOPATH)/bin/pact-go" -l WARN install
+      - name: Run Pact consumer tests
+        run: go test -tags=pact ./pact/...
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.4.3
+        with:
+          name: hush-hush-go-pact
+          path: pact/pacts/*.json
+
+  commits:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+      - run: bun install --frozen-lockfile
+      - name: commitlint
+        run: |
+          bunx commitlint \
+            --from "${{ github.event.pull_request.base.sha }}" \
+            --to "${{ github.event.pull_request.head.sha }}" \
+            --verbose
