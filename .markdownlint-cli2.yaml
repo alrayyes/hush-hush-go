@@ -9,6 +9,12 @@ ignores:
   - "**/node_modules/**"
   - "**/.bun-cache/**"
   - "hush-hush/**" # the pinned submodule — someone else's docs, someone else's rules
+  # A historical planning record in OpenSpec's own format, not this repo's
+  # prose. openspec/README.md is ours and stays covered.
+  - "openspec/proposal.md"
+  - "openspec/design.md"
+  - "openspec/tasks.md"
+  - "openspec/specs/**"
 
 config:
   line-length:

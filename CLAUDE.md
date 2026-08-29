@@ -2,8 +2,10 @@
 
 Official Go SDK for [hush-hush](https://github.com/alrayyes/hush-hush),
 generated from its OpenAPI spec. Built from `~/.config/claude/CLAUDE.md`,
-`~/.config/claude/rules/sdk-generation.md`, and the `go-sdk` OpenSpec change
-in `hush-hush-sdk` — read those for the "why". This file only says what's
+`~/.config/claude/rules/sdk-generation.md`, and this repo's own
+[`openspec/`](openspec/) directory (proposal/design/specs/tasks, carried
+here rather than left only in the `hush-hush-sdk` planning repo that
+originated them) — read those for the "why". This file only says what's
 specific to this repo.
 
 ## Gotchas
