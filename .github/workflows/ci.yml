@@ -19,6 +19,15 @@ env:
   GOLANGCI_LINT_VERSION: v2.13.1
 
 jobs:
+  actionlint:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7
+
   lint:
     runs-on: ubuntu-24.04
     steps:
@@ -115,9 +124,9 @@ jobs:
       - name: Start Prism mock from the pinned spec
         run: |
           docker run -d --name prism -p 4010:4010 \
-            stoplight/prism:5 mock -h 0.0.0.0 /spec/openapi.yaml \
-            -v /"$(pwd)"/api:/spec:ro
-          for i in $(seq 1 30); do
+            -v "$(pwd)/hush-hush/api:/spec:ro" \
+            stoplight/prism:5 mock -h 0.0.0.0 /spec/openapi.yaml
+          for _ in $(seq 1 30); do
             curl -sf http://localhost:4010 >/dev/null 2>&1 && break
             sleep 1
           done
@@ -146,7 +155,7 @@ jobs:
           sudo "$(go env GOPATH)/bin/pact-go" -l WARN install
       - name: Run Pact consumer tests
         run: go test -tags=pact ./pact/...
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.4.3
+      - uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
         with:
           name: hush-hush-go-pact
           path: pact/pacts/*.json

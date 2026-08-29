@@ -8,11 +8,16 @@ ignores:
   - CHANGELOG.md # written by the release job, not by hand
   - "**/node_modules/**"
   - "**/.bun-cache/**"
+  - "hush-hush/**" # the pinned submodule — someone else's docs, someone else's rules
 
 config:
   line-length:
     line_length: 80
     tables: false
+    code_blocks: false
+  # Go code blocks are gofmt-formatted, which means real tabs — that's
+  # correct Go style, not something to flag.
+  no-hard-tabs:
     code_blocks: false
 
 extends: "markdownlint/style/prettier"

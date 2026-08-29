@@ -42,15 +42,15 @@ jobs:
 
       - name: Record the spec commit this repo was last generated from
         id: before
-        run: echo "sha=$(git -C api rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+        run: echo "sha=$(git -C hush-hush rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Pull hush-hush's latest spec
-        run: git submodule update --remote api
+        run: git submodule update --remote hush-hush
 
       - name: Check whether the spec actually moved
         id: moved
         run: |
-          after=$(git -C api rev-parse HEAD)
+          after=$(git -C hush-hush rev-parse HEAD)
           if [ "$after" = "${{ steps.before.outputs.sha }}" ]; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
@@ -66,8 +66,8 @@ jobs:
         if: steps.moved.outputs.changed == 'true'
         id: classify
         run: |
-          git -C api show "${{ steps.before.outputs.sha }}:openapi.yaml" > /tmp/before.yaml
-          if oasdiff breaking /tmp/before.yaml api/openapi.yaml --fail-on ERR > /tmp/breaking.txt 2>&1; then
+          git -C hush-hush show "${{ steps.before.outputs.sha }}:api/openapi.yaml" > /tmp/before.yaml
+          if oasdiff breaking /tmp/before.yaml hush-hush/api/openapi.yaml --fail-on ERR > /tmp/breaking.txt 2>&1; then
             echo "breaking=false" >> "$GITHUB_OUTPUT"
           else
             echo "breaking=true" >> "$GITHUB_OUTPUT"
@@ -107,7 +107,7 @@ jobs:
       - name: Open pull request
         if: steps.moved.outputs.changed == 'true'
         id: pr
-        uses: peter-evans/create-pull-request@271a8d0340265f705b14b6d32b9829c1cb33d45e # v7.0.8
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           commit-message: ${{ steps.message.outputs.title }}

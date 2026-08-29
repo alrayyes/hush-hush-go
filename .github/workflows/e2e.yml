@@ -17,13 +17,13 @@ permissions:
 jobs:
   smoke:
     runs-on: ubuntu-24.04
-    # Skips cleanly until a maintainer sets these two repo secrets (Settings
-    # → Actions → secrets a bot account can't read or set for someone else's
-    # repo — see repo-creation skill's RELEASE_TOKEN note for why this is a
-    # manual step). A missing secret and a wrong one look identical from
-    # outside; this at least avoids nightly failure noise for "not set up
-    # yet" specifically.
-    if: ${{ secrets.HUSH_HUSH_STAGING_URL != '' }}
+    # No job-level `if` on secrets here on purpose — that produced an
+    # invalid-workflow failure with zero jobs run when tried (the secrets
+    # context isn't reliably usable in a job-level `if`). e2e_test.go itself
+    # calls t.Skip when these two repo secrets aren't set yet (Settings →
+    # Actions → secrets a bot account can't read or set for someone else's
+    # repo — see repo-creation skill's RELEASE_TOKEN note), which is what
+    # actually keeps this quiet until a maintainer configures them.
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
