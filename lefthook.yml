@@ -26,6 +26,10 @@ pre-commit:
       glob: "*.md"
       run: bunx markdownlint-cli2 {staged_files}
 
+    - name: actionlint
+      glob: ".github/workflows/*.{yml,yaml}"
+      run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7
+
 commit-msg:
   jobs:
     - name: commitlint

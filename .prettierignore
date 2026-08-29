@@ -3,5 +3,8 @@ node_modules/
 bun.lock
 go.sum
 
+# The pinned hush-hush submodule — vendored, not ours to reformat.
+hush-hush/
+
 # Written by the release job, not by hand.
 CHANGELOG.md

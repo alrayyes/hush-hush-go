@@ -14,7 +14,7 @@
   failure.
 - **[oapi-codegen](https://github.com/oapi-codegen/oapi-codegen)** if you're
   regenerating the client locally: `go install
-  github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest`.
+github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest`.
 
 One command installs the linters and the git hooks:
 
@@ -58,10 +58,11 @@ the full rationale behind this split and the rest of the architecture.
 
 ## The spec
 
-`api/openapi.yaml` isn't owned by this repo — it's a pinned submodule
-pointing at hush-hush's own spec-first `api/openapi.yaml`. Don't edit it
-here; a spec change belongs in hush-hush, and this repo picks it up on the
-next scheduled regeneration (`.github/workflows/codegen.yml`).
+`hush-hush/` is the whole hush-hush repo, pinned in as a git submodule —
+not owned by this repo, and here only for its spec-first
+`hush-hush/api/openapi.yaml`. Don't edit anything under it; a spec change
+belongs in hush-hush, and this repo picks it up on the next scheduled
+regeneration (`.github/workflows/codegen.yml`).
 
 ## Commit messages
 
