@@ -52,9 +52,11 @@ It's in its own internal package so its generated `Client`/`NewClient`
 don't collide with this package's hand-written ones — see `types.go` for
 the re-exported model type aliases. Everything hand-written — the
 constructor, auth, retry/backoff, error mapping, audit-log query — is where
-an actual code change belongs. See `design.md` in
-[the go-sdk OpenSpec change](https://github.com/alrayyes/hush-hush-sdk) for
-the full rationale behind this split and the rest of the architecture.
+an actual code change belongs. See [`openspec/design.md`](openspec/design.md)
+for the full rationale behind this split and the rest of the architecture —
+this repo carries its own copy of the proposal/design/specs/tasks that built
+it, so understanding it doesn't depend on the planning repo that originated
+it (`hush-hush-sdk`) being reachable.
 
 ## The spec
 

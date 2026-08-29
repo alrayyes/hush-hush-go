@@ -1,10 +1,13 @@
 # hush-hush-go
 
+[![ci](https://github.com/alrayyes/hush-hush-go/actions/workflows/ci.yml/badge.svg)](https://github.com/alrayyes/hush-hush-go/actions/workflows/ci.yml)
+[![Go Reference](https://pkg.go.dev/badge/github.com/alrayyes/hush-hush-go.svg)](https://pkg.go.dev/github.com/alrayyes/hush-hush-go)
+[![Go Report Card](https://goreportcard.com/badge/github.com/alrayyes/hush-hush-go)](https://goreportcard.com/report/github.com/alrayyes/hush-hush-go)
+[![release](https://img.shields.io/github/v/release/alrayyes/hush-hush-go)](https://github.com/alrayyes/hush-hush-go/releases)
+[![license](https://img.shields.io/github/license/alrayyes/hush-hush-go)](LICENSE)
+
 The official Go SDK for [hush-hush](https://github.com/alrayyes/hush-hush),
 generated from its OpenAPI spec and kept in sync with it automatically.
-
-> Under construction — see
-> [alrayyes/hush-hush#74](https://github.com/alrayyes/hush-hush/issues/74).
 
 ## Install
 
