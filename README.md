@@ -1,6 +1,7 @@
 # hush-hush-go
 
 [![ci](https://github.com/alrayyes/hush-hush-go/actions/workflows/ci.yml/badge.svg)](https://github.com/alrayyes/hush-hush-go/actions/workflows/ci.yml)
+[![Codecov](https://codecov.io/gh/alrayyes/hush-hush-go/graph/badge.svg)](https://codecov.io/gh/alrayyes/hush-hush-go)
 [![Go Reference](https://pkg.go.dev/badge/github.com/alrayyes/hush-hush-go.svg)](https://pkg.go.dev/github.com/alrayyes/hush-hush-go)
 [![Go Report Card](https://goreportcard.com/badge/github.com/alrayyes/hush-hush-go)](https://goreportcard.com/report/github.com/alrayyes/hush-hush-go)
 [![release](https://img.shields.io/github/v/release/alrayyes/hush-hush-go)](https://github.com/alrayyes/hush-hush-go/releases)
