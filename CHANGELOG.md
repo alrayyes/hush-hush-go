@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.1.0](https://github.com/alrayyes/hush-hush-go/compare/v1.0.0...v1.1.0) (2026-08-30)
+
+
+### Features
+
+* **ci:** upload coverage to Codecov ([#12](https://github.com/alrayyes/hush-hush-go/issues/12)) ([9afdcdd](https://github.com/alrayyes/hush-hush-go/commit/9afdcdd67bdad9321d41c75f9159e28253159419)), closes [#11](https://github.com/alrayyes/hush-hush-go/issues/11)
+
+
+### Bug Fixes
+
+* regenerate client from updated hush-hush spec ([#10](https://github.com/alrayyes/hush-hush-go/issues/10)) ([b281641](https://github.com/alrayyes/hush-hush-go/commit/b28164197079bbbca59ba52aefd6bb35d548fe3e))
+
 ## 1.0.0 (2026-08-29)
 
 
