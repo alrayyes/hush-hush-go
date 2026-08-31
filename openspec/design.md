@@ -42,6 +42,15 @@ See proposal.md for motivation. Relevant constraints: hush-hush's `api/openapi.y
 - [Pact provider verification depends on hush-hush's CI adopting the new consumer, which hasn't happened yet] → until it does, spec-vs-server semantic drift isn't mechanically caught — same gap that exists today, not made worse by this change.
 - [A breaking spec change can auto-merge as a small, green-CI-passing generated-code diff, since full auto-merge applies to all regeneration PRs] → accepted risk, per Ryan's explicit repeated auto-merge grant for this session. The `openapi-diff` classification still runs and is visible on every PR after the fact, so a maintainer reviewing history can spot a breaking merge even though nothing blocked it.
 
+**Update, later audit**: the auto-merge step described above was removed from
+`codegen.yml`. That grant was scoped to the session that built this repo, not
+to the CI workflow permanently — `rules/sdk-generation.md` calls for real
+review on every regeneration PR, not the standing Renovate/Dependabot
+self-merge exception, and baking a session-scoped grant into unattended CI
+outlived the scope it was actually given. The `openapi-diff` classification
+still runs and still drives the version bump; a human now merges the PR it
+opens.
+
 ## Open Questions
 
 - Whether hush-hush's responses actually carry a request-ID header — if not, `APIError.RequestID` simply stays empty; doesn't change the error type's shape.

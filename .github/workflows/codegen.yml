@@ -5,11 +5,18 @@
 # oasdiff classifies the spec change as additive or breaking; that
 # classification becomes the commit/PR message's Conventional Commits bump
 # marker (fix: vs fix!: + BREAKING CHANGE:), so release-please computes the
-# right semver bump from a message a human never had to write. Full
-# auto-merge applies to every regeneration PR this repo opens, per the
-# session-scoped auto-merge grant this repo was built under — the
-# classification stays visible in the PR body for after-the-fact review even
-# though it doesn't gate merge.
+# right semver bump from a message a human never had to write.
+#
+# No auto-merge step: rules/sdk-generation.md is explicit that a
+# regenerated SDK gets real review, not the standing Renovate/Dependabot
+# self-merge exception — a regeneration can touch every file in the repo,
+# and diff size says nothing about the size of the underlying change. A
+# previous version of this workflow auto-merged every regeneration PR
+# unconditionally, including breaking ones, under a session-scoped
+# auto-merge grant that was never meant to become permanent CI behavior
+# (CLAUDE.md: a grant is scoped to what was said, and doesn't carry
+# forward past its own session). Removed - this job stops at opening the
+# pull request.
 name: codegen
 
 on:
@@ -115,9 +122,3 @@ jobs:
           body: ${{ steps.message.outputs.body }}
           branch: codegen/regenerate
           labels: kind/chore,topic/codegen
-
-      - name: Auto-merge on green CI
-        if: steps.moved.outputs.changed == 'true' && steps.pr.outputs.pull-request-number
-        run: gh pr merge --auto --squash "${{ steps.pr.outputs.pull-request-url }}"
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
