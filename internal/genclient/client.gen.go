@@ -34,7 +34,15 @@ type AuditLogEntry struct {
 	Action AuditLogEntryAction `json:"action"`
 
 	// Caller The caller's presented identity, if any.
-	Caller    *string   `json:"caller,omitempty"`
+	Caller *string `json:"caller,omitempty"`
+
+	// Ip The request's source IP. Unlike caller, this is never
+	// self-reported - it's the one piece of the request nobody gets
+	// to lie about via a header. Currently the immediate TCP peer's
+	// address; this service isn't deployed behind a reverse proxy or
+	// load balancer, so X-Forwarded-For (or similar) support isn't
+	// implemented yet.
+	Ip        string    `json:"ip"`
 	ObjectId  ObjectId  `json:"object_id"`
 	Timestamp time.Time `json:"timestamp"`
 }
