@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.1.1](https://github.com/alrayyes/hush-hush-go/compare/v1.1.0...v1.1.1) (2026-08-31)
+
+
+### Bug Fixes
+
+* **ci:** don't fail CI on Codecov's Dependabot-token gap ([#17](https://github.com/alrayyes/hush-hush-go/issues/17)) ([b21b117](https://github.com/alrayyes/hush-hush-go/commit/b21b1172c6e6b4a177a73769ba475978de49b4a4))
+* **ci:** stop auto-merging every SDK regeneration PR ([#15](https://github.com/alrayyes/hush-hush-go/issues/15)) ([59329d8](https://github.com/alrayyes/hush-hush-go/commit/59329d87ff424866e30df6f7d4fd9503101de97e))
+* regenerate client from updated hush-hush spec ([#14](https://github.com/alrayyes/hush-hush-go/issues/14)) ([7527d67](https://github.com/alrayyes/hush-hush-go/commit/7527d670908ee9c209a5868f31b6a2ccdd4271bb))
+
 ## [1.1.0](https://github.com/alrayyes/hush-hush-go/compare/v1.0.0...v1.1.0) (2026-08-30)
 
 
