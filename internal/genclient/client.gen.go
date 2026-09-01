@@ -52,7 +52,11 @@ type AuditLogEntryAction string
 
 // CreateObjectRequest defines model for CreateObjectRequest.
 type CreateObjectRequest struct {
-	Id ObjectId `json:"id"`
+	// Description A free-text label set at creation, for a reader who only knows the
+	// id. Fixed at creation - the same as used_by, it is unaffected by a
+	// later value update.
+	Description *ObjectDescription `json:"description,omitempty"`
+	Id          ObjectId           `json:"id"`
 
 	// UsedBy The consumers (repos or hosts) recorded as depending on this
 	// object. Set at creation; unaffected by later value updates.
@@ -74,12 +78,21 @@ type Health struct {
 	Status string `json:"status"`
 }
 
+// ObjectDescription A free-text label set at creation, for a reader who only knows the
+// id. Fixed at creation - the same as used_by, it is unaffected by a
+// later value update.
+type ObjectDescription = string
+
 // ObjectId defines model for ObjectId.
 type ObjectId = string
 
 // ObjectMetadata defines model for ObjectMetadata.
 type ObjectMetadata struct {
-	Id ObjectId `json:"id"`
+	// Description A free-text label set at creation, for a reader who only knows the
+	// id. Fixed at creation - the same as used_by, it is unaffected by a
+	// later value update.
+	Description *ObjectDescription `json:"description,omitempty"`
+	Id          ObjectId           `json:"id"`
 
 	// UsedBy The consumers (repos or hosts) recorded as depending on this
 	// object. Set at creation; unaffected by later value updates.
