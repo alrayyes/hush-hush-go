@@ -122,6 +122,9 @@ type Caller = string
 // Id defines model for id.
 type Id = ObjectId
 
+// BadRequest defines model for BadRequest.
+type BadRequest = Error
+
 // NotFound defines model for NotFound.
 type NotFound = Error
 
@@ -842,6 +845,7 @@ type QueryAuditLogResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *[]AuditLogEntry
+	JSON400      *BadRequest
 }
 
 // Status returns HTTPResponse.Status
@@ -1097,6 +1101,13 @@ func ParseQueryAuditLogResponse(rsp *http.Response) (*QueryAuditLogResponse, err
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
 
 	}
 
