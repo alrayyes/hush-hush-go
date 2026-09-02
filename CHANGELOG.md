@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.3](https://github.com/alrayyes/hush-hush-go/compare/v1.1.2...v1.1.3) (2026-09-02)
+
+
+### Bug Fixes
+
+* **ci:** use RELEASE_TOKEN for the codegen PR, not GITHUB_TOKEN ([#23](https://github.com/alrayyes/hush-hush-go/issues/23)) ([c3550a2](https://github.com/alrayyes/hush-hush-go/commit/c3550a25319b2404d6cf78b56ae1dfc9f1be6bfe)), closes [#22](https://github.com/alrayyes/hush-hush-go/issues/22)
+
 ## [1.1.2](https://github.com/alrayyes/hush-hush-go/compare/v1.1.1...v1.1.2) (2026-09-01)
 
 
