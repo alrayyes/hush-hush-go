@@ -25,11 +25,6 @@ specific to this repo.
 - **No goreleaser, no Dockerfile.** This is a library, not a binary or
   service — consumers `go get` the tagged source directly. Don't add build
   artifacts on top of a release the way an API/CLI scaffold would.
-- **Full auto-merge is on for this repo's PRs, scaffolding and regeneration
-  alike** — a session-scoped grant during initial development, not the
-  standing Renovate/Dependabot exception `rules/sdk-generation.md` otherwise
-  requires review for. `oasdiff`'s breaking-change classification still
-  shows up on every regeneration PR; it just doesn't block the merge.
 - **No Vale/ltex prose-quality tier.** Markdown gets Prettier + markdownlint
   (mechanics), not grammar/style checking — a deliberate scope cut versus
   `scaffold-go-api`'s tooling, since nothing in this repo's tasks called for
