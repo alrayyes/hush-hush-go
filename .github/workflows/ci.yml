@@ -94,6 +94,22 @@ jobs:
       - name: go mod edit -fmt
         run: go mod edit -fmt go.mod && git diff --exit-code go.mod
 
+  # Pinning a dependency stops it drifting; it says nothing about the
+  # pinned version having a known CVE since. Separate from the update pull
+  # request Dependabot raises - this runs on every push, whatever's pinned
+  # right now. Every other repo in the family already has an equivalent
+  # (composer audit/pip-audit/npm audit/govulncheck); this repo was the
+  # one gap.
+  govulncheck:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - run: go install golang.org/x/vuln/cmd/govulncheck@v1.7.0
+      - run: govulncheck ./...
+
   # Proves the generated client wasn't hand-edited: regenerating from the
   # pinned submodule commit must produce a byte-identical file. See
   # design.md's "Generated/hand-written boundary" decision.
