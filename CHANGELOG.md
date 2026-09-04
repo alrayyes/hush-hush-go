@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.2.0](https://github.com/alrayyes/hush-hush-go/compare/v1.1.6...v1.2.0) (2026-09-04)
+
+
+### Features
+
+* **ci:** add a govulncheck job ([#37](https://github.com/alrayyes/hush-hush-go/issues/37)) ([0a19241](https://github.com/alrayyes/hush-hush-go/commit/0a1924171316f2a00ec0f1d35585c3231dcebf00)), closes [#35](https://github.com/alrayyes/hush-hush-go/issues/35)
+
+
+### Bug Fixes
+
+* **ci:** pin pact-consumer's upload-artifact to the version every sibling repo uses ([#36](https://github.com/alrayyes/hush-hush-go/issues/36)) ([10f0baa](https://github.com/alrayyes/hush-hush-go/commit/10f0baa4b634684b1a7c4eca52aee89c86890411)), closes [#34](https://github.com/alrayyes/hush-hush-go/issues/34)
+
 ## [1.1.6](https://github.com/alrayyes/hush-hush-go/compare/v1.1.5...v1.1.6) (2026-09-04)
 
 
