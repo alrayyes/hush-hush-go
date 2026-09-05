@@ -9,6 +9,11 @@ ignores:
   - "**/node_modules/**"
   - "**/.bun-cache/**"
   - "hush-hush/**" # the pinned submodule — someone else's docs, someone else's rules
+  # Vale's own style packages, fetched by `vale sync`, not committed - never
+  # ignore styles/ wholesale, or styles/House (this repo's own vocabulary)
+  # goes with it.
+  - "styles/Google/**"
+  - "styles/proselint/**"
   # A historical planning record in OpenSpec's own format, not this repo's
   # prose. openspec/README.md is ours and stays covered.
   - "openspec/proposal.md"
