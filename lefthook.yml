@@ -26,6 +26,10 @@ pre-commit:
       glob: "*.md"
       run: bunx markdownlint-cli2 {staged_files}
 
+    - name: vale
+      glob: "*.md"
+      run: ./scripts/lint-vale.sh
+
     - name: actionlint
       glob: ".github/workflows/*.{yml,yaml}"
       run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7
@@ -49,3 +53,9 @@ pre-push:
 
     - name: markdownlint
       run: bun run lint:md
+
+    - name: vale
+      run: ./scripts/lint-vale.sh
+
+    - name: ltex
+      run: ./scripts/lint-ltex.sh

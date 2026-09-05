@@ -1,0 +1,29 @@
+{
+	"ltex": {
+		"language": "en-US",
+		"dictionary": {
+			"en-US": [
+				"CI",
+				"Codecov",
+				"GoDoc",
+				"OpenAPI",
+				"Quickstart",
+				"backoff",
+				"ci",
+				"commitlint",
+				"golangci-lint",
+				"lefthook",
+				"markdownlint",
+				"oapi-codegen",
+				"release-please"
+			]
+		},
+		"disabledRules": {
+			"en-US": [
+				"PASSIVE_VOICE",
+				"UPPERCASE_SENTENCE_START",
+				"EN_COMPOUNDS_HAND_WRITTEN"
+			]
+		}
+	}
+}
