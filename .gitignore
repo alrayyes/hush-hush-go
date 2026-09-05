@@ -8,5 +8,9 @@ pact/pacts/
 node_modules/
 .bun-cache/
 
+# Vale packages, fetched by `vale sync`, not committed.
+styles/Google/
+styles/proselint/
+
 # Written by the release job, not by hand.
 CHANGELOG.md
