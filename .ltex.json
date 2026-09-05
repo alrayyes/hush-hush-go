@@ -12,6 +12,7 @@
 				"ci",
 				"commitlint",
 				"golangci-lint",
+				"goreleaser",
 				"lefthook",
 				"markdownlint",
 				"oapi-codegen",

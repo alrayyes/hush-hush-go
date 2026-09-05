@@ -12,8 +12,8 @@ cd "$(dirname "$0")/.."
 
 if command -v vale >/dev/null 2>&1; then
   vale sync
-  vale README.md CONTRIBUTING.md SECURITY.md
+  vale README.md CONTRIBUTING.md CLAUDE.md SECURITY.md
 else
   docker run --rm -v "$PWD:/work" -w /work --entrypoint sh "$IMAGE" \
-    -c "vale sync && vale README.md CONTRIBUTING.md SECURITY.md"
+    -c "vale sync && vale README.md CONTRIBUTING.md CLAUDE.md SECURITY.md"
 fi

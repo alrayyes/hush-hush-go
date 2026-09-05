@@ -38,4 +38,4 @@ cd "$(dirname "$0")/.."
 
 # ltex-cli-plus exits 3 when it finds something, not 1. Testing for a
 # specific code would pass a failing document, so this tests for non-zero.
-run_ltex --client-configuration=.ltex.json README.md CONTRIBUTING.md SECURITY.md
+run_ltex --client-configuration=.ltex.json README.md CONTRIBUTING.md CLAUDE.md SECURITY.md

@@ -25,10 +25,6 @@ specific to this repo.
 - **No goreleaser, no Dockerfile.** This is a library, not a binary or
   service — consumers `go get` the tagged source directly. Don't add build
   artifacts on top of a release the way an API/CLI scaffold would.
-- **No Vale/ltex prose-quality tier.** Markdown gets Prettier + markdownlint
-  (mechanics), not grammar/style checking — a deliberate scope cut versus
-  `scaffold-go-api`'s tooling, since nothing in this repo's tasks called for
-  it.
 - **`HUSH_HUSH_STAGING_URL`/`HUSH_HUSH_STAGING_API_KEY` secrets aren't set
   yet.** `e2e.yml` skips cleanly until a maintainer adds them — Actions
   secrets can't be read or set by anyone but the repo owner.
