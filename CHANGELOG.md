@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.5](https://github.com/alrayyes/hush-hush-go/compare/v1.2.4...v1.2.5) (2026-09-10)
+
+
+### Bug Fixes
+
+* **deps:** downgrade bun.lock to lockfileVersion 1 again, guard against regression ([#55](https://github.com/alrayyes/hush-hush-go/issues/55)) ([9a221c8](https://github.com/alrayyes/hush-hush-go/commit/9a221c8fa0d64d40d086e66dccde4e015fed88c7)), closes [#54](https://github.com/alrayyes/hush-hush-go/issues/54)
+
 ## [1.2.4](https://github.com/alrayyes/hush-hush-go/compare/v1.2.3...v1.2.4) (2026-09-10)
 
 
