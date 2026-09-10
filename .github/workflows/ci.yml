@@ -53,7 +53,12 @@ jobs:
         with:
           go-version-file: go.mod
       - name: go test (hand-written layer only; see design.md's testing layers)
-        run: go test -race -covermode=atomic -coverprofile=coverage.out ./...
+        # gotestsum wraps go test for the JUnit report Test Analytics
+        # needs, on top of the same human-readable output go test already
+        # gave.
+        run: >-
+          go tool gotestsum --junitfile junit.xml --
+          -race -covermode=atomic -coverprofile=coverage.out ./...
       - name: Report coverage
         run: |
           go tool cover -func=coverage.out | tail -1 |
@@ -71,6 +76,16 @@ jobs:
           # would fail every Dependabot PR's CI on that basis alone
           # (confirmed on the sibling hush-hush-php repo's PRs #13/#14,
           # where the tests themselves passed clean).
+          fail_ci_if_error: false
+      - name: Upload test results to Codecov
+        # Runs even on a failed test step - a red PR is exactly what Test
+        # Analytics exists to explain.
+        if: ${{ !cancelled() }}
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          report-type: test_results
+          files: junit.xml
           fail_ci_if_error: false
 
   build:
