@@ -54,6 +54,11 @@ pre-push:
     - name: markdownlint
       run: bun run lint:md
 
+    - name: bun-lock-version
+      glob: "bun.lock"
+      run: |
+        grep -q '"lockfileVersion": 1,' bun.lock
+
     - name: vale
       run: ./scripts/lint-vale.sh
 
