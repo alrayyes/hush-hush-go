@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.3](https://github.com/alrayyes/hush-hush-go/compare/v1.2.2...v1.2.3) (2026-09-10)
+
+
+### Bug Fixes
+
+* **deps:** override smol-toml to patch a DoS advisory ([#50](https://github.com/alrayyes/hush-hush-go/issues/50)) ([d0ac73f](https://github.com/alrayyes/hush-hush-go/commit/d0ac73f6e6eaa7e792544e565e8970db1e7d853e))
+
 ## [1.2.2](https://github.com/alrayyes/hush-hush-go/compare/v1.2.1...v1.2.2) (2026-09-09)
 
 
