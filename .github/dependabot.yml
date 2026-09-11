@@ -20,6 +20,9 @@ updates:
       go-dependencies:
         patterns: ["*"]
         update-types: [minor, patch]
+      go-dependencies-major:
+        patterns: ["*"]
+        update-types: [major]
 
   - package-ecosystem: github-actions
     directory: /
@@ -35,6 +38,9 @@ updates:
       actions:
         patterns: ["*"]
         update-types: [minor, patch]
+      actions-major:
+        patterns: ["*"]
+        update-types: [major]
 
   # Nothing here is JavaScript. package.json exists so commitlint can
   # resolve the shared config it extends, which bunx alone cannot do.
@@ -52,3 +58,6 @@ updates:
       tooling:
         patterns: ["*"]
         update-types: [minor, patch]
+      tooling-major:
+        patterns: ["*"]
+        update-types: [major]
