@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.6](https://github.com/alrayyes/hush-hush-go/compare/v1.2.5...v1.2.6) (2026-09-11)
+
+
+### Bug Fixes
+
+* **ci:** group major-version Dependabot bumps per ecosystem ([#59](https://github.com/alrayyes/hush-hush-go/issues/59)) ([830dedc](https://github.com/alrayyes/hush-hush-go/commit/830dedc0885f61adfb0a2c018a1fcc55d4f82e30)), closes [#58](https://github.com/alrayyes/hush-hush-go/issues/58)
+
 ## [1.2.5](https://github.com/alrayyes/hush-hush-go/compare/v1.2.4...v1.2.5) (2026-09-10)
 
 
