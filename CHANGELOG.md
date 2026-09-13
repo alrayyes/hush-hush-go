@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.9](https://github.com/alrayyes/hush-hush-go/compare/v1.2.8...v1.2.9) (2026-09-13)
+
+
+### Bug Fixes
+
+* regenerate client from updated hush-hush spec ([#67](https://github.com/alrayyes/hush-hush-go/issues/67)) ([96480cc](https://github.com/alrayyes/hush-hush-go/commit/96480ccbc0ca2901b2a5c93b32303c0e8b77c2d0))
+
 ## [1.2.8](https://github.com/alrayyes/hush-hush-go/compare/v1.2.7...v1.2.8) (2026-09-12)
 
 
