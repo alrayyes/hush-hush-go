@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.0](https://github.com/alrayyes/hush-hush-go/compare/v1.2.10...v1.3.0) (2026-09-18)
+
+
+### Features
+
+* add Client.ListObjects ([#72](https://github.com/alrayyes/hush-hush-go/issues/72)) ([88bea03](https://github.com/alrayyes/hush-hush-go/commit/88bea035766120a2a246dd8cbd2b9b6f9d714123))
+
 ## [1.2.10](https://github.com/alrayyes/hush-hush-go/compare/v1.2.9...v1.2.10) (2026-09-18)
 
 
