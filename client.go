@@ -186,3 +186,25 @@ func (c *Client) GetObjectUsedBy(ctx context.Context, id string) (*UsedBy, error
 	}
 	return resp.JSON200, nil
 }
+
+// ListObjects returns every stored object's metadata (id, used_by,
+// description — never the sealed value), optionally narrowed to objects
+// whose recorded used_by lineage includes usedBy ("" means no filter).
+// Unlike every other read in this SDK, this requires a credential: an
+// id-scoped read only discloses what the caller already knows the id of,
+// but enumerating every object is a capability none of those grant on
+// their own.
+func (c *Client) ListObjects(ctx context.Context, usedBy string) ([]ObjectMetadata, error) {
+	params := &genclient.ListObjectsParams{}
+	if usedBy != "" {
+		params.UsedBy = &usedBy
+	}
+	resp, err := c.api.ListObjectsWithResponse(ctx, params, c.authEditor)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode() != http.StatusOK || resp.JSON200 == nil {
+		return nil, newAPIError(resp.StatusCode(), resp.HTTPResponse.Header, resp.Body)
+	}
+	return *resp.JSON200, nil
+}
