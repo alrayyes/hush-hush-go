@@ -146,6 +146,12 @@ type QueryAuditLogParams struct {
 	To *time.Time `form:"to,omitempty" json:"to,omitempty"`
 }
 
+// ListObjectsParams defines parameters for ListObjects.
+type ListObjectsParams struct {
+	// UsedBy Restrict to objects whose recorded used_by lineage includes this consumer.
+	UsedBy *string `form:"used_by,omitempty" json:"used_by,omitempty"`
+}
+
 // CreateObjectParams defines parameters for CreateObject.
 type CreateObjectParams struct {
 	// XCaller The caller's own identity - a repo or host name, whatever the
@@ -271,6 +277,9 @@ type ClientInterface interface {
 	// Health request
 	Health(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// ListObjects request
+	ListObjects(ctx context.Context, params *ListObjectsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// CreateObjectWithBody request with any body
 	CreateObjectWithBody(ctx context.Context, params *CreateObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -305,6 +314,18 @@ func (c *Client) QueryAuditLog(ctx context.Context, params *QueryAuditLogParams,
 
 func (c *Client) Health(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewHealthRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) ListObjects(ctx context.Context, params *ListObjectsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListObjectsRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -513,6 +534,55 @@ func NewHealthRequest(server string) (*http.Request, error) {
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListObjectsRequest generates requests for ListObjects
+func NewListObjectsRequest(server string, params *ListObjectsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/objects")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.UsedBy != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "used_by", runtime.ParamLocationQuery, *params.UsedBy); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -821,6 +891,9 @@ type ClientWithResponsesInterface interface {
 	// HealthWithResponse request
 	HealthWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*HealthResponse, error)
 
+	// ListObjectsWithResponse request
+	ListObjectsWithResponse(ctx context.Context, params *ListObjectsParams, reqEditors ...RequestEditorFn) (*ListObjectsResponse, error)
+
 	// CreateObjectWithBodyWithResponse request with any body
 	CreateObjectWithBodyWithResponse(ctx context.Context, params *CreateObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateObjectResponse, error)
 
@@ -880,6 +953,29 @@ func (r HealthResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r HealthResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type ListObjectsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *[]ObjectMetadata
+	JSON401      *Unauthorized
+}
+
+// Status returns HTTPResponse.Status
+func (r ListObjectsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListObjectsResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -1020,6 +1116,15 @@ func (c *ClientWithResponses) HealthWithResponse(ctx context.Context, reqEditors
 	return ParseHealthResponse(rsp)
 }
 
+// ListObjectsWithResponse request returning *ListObjectsResponse
+func (c *ClientWithResponses) ListObjectsWithResponse(ctx context.Context, params *ListObjectsParams, reqEditors ...RequestEditorFn) (*ListObjectsResponse, error) {
+	rsp, err := c.ListObjects(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListObjectsResponse(rsp)
+}
+
 // CreateObjectWithBodyWithResponse request with arbitrary body returning *CreateObjectResponse
 func (c *ClientWithResponses) CreateObjectWithBodyWithResponse(ctx context.Context, params *CreateObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateObjectResponse, error) {
 	rsp, err := c.CreateObjectWithBody(ctx, params, contentType, body, reqEditors...)
@@ -1134,6 +1239,39 @@ func ParseHealthResponse(rsp *http.Response) (*HealthResponse, error) {
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListObjectsResponse parses an HTTP response from a ListObjectsWithResponse call
+func ParseListObjectsResponse(rsp *http.Response) (*ListObjectsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListObjectsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []ObjectMetadata
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
 
 	}
 
