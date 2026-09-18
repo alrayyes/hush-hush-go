@@ -109,3 +109,62 @@ func TestClient_XCaller_IsPerRequest(t *testing.T) {
 		t.Errorf("X-Caller = %q, want empty on a call with no caller set", gotCaller)
 	}
 }
+
+func TestClient_ListObjects_RequiresCredential(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if auth := r.Header.Get("Authorization"); auth != "Bearer secret-token" {
+			w.WriteHeader(http.StatusUnauthorized)
+			_ = json.NewEncoder(w).Encode(hushhush.Error{Error: "missing or invalid bearer token"})
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode([]hushhush.ObjectMetadata{{Id: "obj-1"}})
+	}))
+	defer srv.Close()
+
+	client, err := hushhush.NewClient(srv.URL)
+	if err != nil {
+		t.Fatalf("NewClient: %v", err)
+	}
+
+	if _, err := client.ListObjects(context.Background(), ""); err == nil {
+		t.Error("ListObjects with no credential: want error, got nil")
+	}
+
+	client, err = hushhush.NewClient(srv.URL, hushhush.WithAPIKey("secret-token"))
+	if err != nil {
+		t.Fatalf("NewClient: %v", err)
+	}
+
+	objects, err := client.ListObjects(context.Background(), "")
+	if err != nil {
+		t.Fatalf("ListObjects: %v", err)
+	}
+	if len(objects) != 1 || objects[0].Id != "obj-1" {
+		t.Errorf("objects = %+v, want one entry for obj-1", objects)
+	}
+}
+
+func TestClient_ListObjects_UsedByFilter(t *testing.T) {
+	var gotQuery string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotQuery = r.URL.RawQuery
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode([]hushhush.ObjectMetadata{})
+	}))
+	defer srv.Close()
+
+	client, err := hushhush.NewClient(srv.URL, hushhush.WithAPIKey("token"))
+	if err != nil {
+		t.Fatalf("NewClient: %v", err)
+	}
+
+	if _, err := client.ListObjects(context.Background(), "homelab/vps-docker"); err != nil {
+		t.Fatalf("ListObjects: %v", err)
+	}
+	if gotQuery != "used_by=homelab%2Fvps-docker" {
+		t.Errorf("query = %q, want a used_by filter, got %q", gotQuery, gotQuery)
+	}
+}
