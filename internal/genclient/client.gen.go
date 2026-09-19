@@ -80,6 +80,10 @@ type AuditLogEntry struct {
 	// Caller The caller's presented identity, if any.
 	Caller *string `json:"caller,omitempty"`
 
+	// Id This entry's own id - stable and strictly increasing, so it
+	// doubles as the cursor for the `after` query parameter.
+	Id int64 `json:"id"`
+
 	// Ip The request's source IP. Unlike caller, this is never
 	// self-reported - it's the one piece of the request nobody gets
 	// to lie about via a header. Currently the immediate TCP peer's
@@ -305,6 +309,16 @@ type QueryAuditLogParams struct {
 
 	// To Restrict to entries at or before this time.
 	To *time.Time `form:"to,omitempty" json:"to,omitempty"`
+
+	// After Cursor: restrict to entries recorded after this entry's own
+	// id. Combine with limit to page forward through a large log -
+	// id-based rather than offset-based, so a concurrent write
+	// during paging can't shift or double-count a row
+	// (design.md's "Audit log UI" decision).
+	After *int64 `form:"after,omitempty" json:"after,omitempty"`
+
+	// Limit Maximum entries to return. Defaults to 50, capped at 500.
+	Limit *int32 `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
 // LogoutParams defines parameters for Logout.
@@ -964,6 +978,30 @@ func NewQueryAuditLogRequest(server string, params *QueryAuditLogParams) (*http.
 		if params.To != nil {
 
 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "to", *params.To, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "date-time"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.After != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "after", *params.After, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: "int64"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: "int32"}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
