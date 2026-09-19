@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.0.1](https://github.com/alrayyes/hush-hush-go/compare/v2.0.0...v2.0.1) (2026-09-19)
+
+
+### Bug Fixes
+
+* **deps:** bump google.golang.org/grpc from 1.83.0 to 1.83.2 ([#81](https://github.com/alrayyes/hush-hush-go/issues/81)) ([963791d](https://github.com/alrayyes/hush-hush-go/commit/963791db20faddd06f5156a5d88a421574aa95ec))
+* regenerate client from updated hush-hush spec ([e9e17fd](https://github.com/alrayyes/hush-hush-go/commit/e9e17fd0499ddd848062ee2fb6ef0d858a6a0bc5))
+* regenerate client from updated hush-hush spec ([dbad305](https://github.com/alrayyes/hush-hush-go/commit/dbad305d67bd8292f8fef92b0dd16798302c5c20))
+
 ## [2.0.0](https://github.com/alrayyes/hush-hush-go/compare/v1.3.1...v2.0.0) (2026-09-19)
 
 
