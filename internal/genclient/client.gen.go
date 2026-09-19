@@ -123,6 +123,12 @@ type Error struct {
 // Health defines model for Health.
 type Health struct {
 	Status string `json:"status"`
+
+	// Version The running server's own version, as goreleaser stamped it -
+	// "dev" for a plain `go build`. The web UI's footer links this
+	// to the changelog page rather than hardcoding a version that
+	// would drift from what's actually running.
+	Version string `json:"version"`
 }
 
 // LoginFinishRequest defines model for LoginFinishRequest.
