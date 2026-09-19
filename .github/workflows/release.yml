@@ -23,12 +23,24 @@ concurrency:
 jobs:
   release-please:
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     permissions:
       contents: write
       pull-requests: write
     steps:
-      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+      # release-please-action is a `uses:` step, so nick-fields/retry (which
+      # only runs a shell command) can't wrap it directly — wretry.action
+      # wraps another action's own uses:/with: instead. Retries a secondary
+      # GitHub API rate limit / abuse-detection response, which clears
+      # itself within seconds and has nothing to do with the token's hourly
+      # quota genuinely running out (rules/releases.md's "Retry a release
+      # job through GitHub's transient rate limit").
+      - uses: Wandalen/wretry.action@031368a688929442750a679b6c35c622e93389f2 # v3.8.0
         with:
-          config-file: release-please-config.json
-          manifest-file: .release-please-manifest.json
-          token: ${{ secrets.RELEASE_TOKEN }}
+          action: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7
+          with: |
+            config-file: release-please-config.json
+            manifest-file: .release-please-manifest.json
+            token: ${{ secrets.RELEASE_TOKEN }}
+          attempt_limit: 3
+          attempt_delay: 30000
