@@ -42,6 +42,20 @@ See proposal.md for motivation. Relevant constraints: hush-hush's `api/openapi.y
 - [Pact provider verification depends on hush-hush's CI adopting the new consumer, which hasn't happened yet] → until it does, spec-vs-server semantic drift isn't mechanically caught — same gap that exists today, not made worse by this change.
 - [A breaking spec change can auto-merge as a small, green-CI-passing generated-code diff, since full auto-merge applies to all regeneration PRs] → accepted risk, per Ryan's explicit repeated auto-merge grant for this session. The `openapi-diff` classification still runs and is visible on every PR after the fact, so a maintainer reviewing history can spot a breaking merge even though nothing blocked it.
 
+**Update, later audit (2026-09-19)**: "Versioning via spec diff" computes
+the semver bump but doesn't touch `go.mod`'s own module path — a separate
+Go modules requirement, unrelated to Conventional Commits or this
+pipeline's oasdiff classification. Go's semantic import versioning
+requires the module path itself to carry a `/vN` suffix once a module
+releases v2 or higher (https://go.dev/ref/mod#major-version-suffixes);
+`codegen.yml`'s breaking-change bump to v2.0.0 did that in the tag and
+manifest but never in `go.mod`, leaving v2.0.0/v2.0.1 tagged but
+unconsumable via `go get` (alrayyes/hush-hush-go#86, confirmed live
+trying to bump `hush-hush-cli`'s pin). Fixed by hand in that issue's PR;
+this pipeline has no mechanism to do it automatically, so any future
+major bump needs the same manual `go.mod` + internal-import edit before
+it's real.
+
 **Update, later audit**: the auto-merge step described above was removed from
 `codegen.yml`. That grant was scoped to the session that built this repo, not
 to the CI workflow permanently — `rules/sdk-generation.md` calls for real
