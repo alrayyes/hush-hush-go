@@ -58,8 +58,9 @@ func main() {
 	fmt.Printf("got %d bytes of sealed ciphertext\n", len(value))
 
 	// The audit log records every read and write; querying it needs no
-	// credential either, and returns the full matching result set (there's
-	// no pagination on this endpoint).
+	// credential either. QueryAuditLog returns one page at a time (default
+	// 50 entries, capped at 500) — set AuditLogFilter.Limit for the page
+	// size and After to the previous page's last entry's Id to fetch more.
 	entries, err := client.QueryAuditLog(ctx, hushhush.AuditLogFilter{})
 	if err != nil {
 		log.Fatal(err)

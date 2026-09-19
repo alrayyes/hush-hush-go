@@ -23,6 +23,9 @@ type (
 	// AuditLogEntryAction is an AuditLogEntry's recorded action — see the
 	// Action* constants below.
 	AuditLogEntryAction = genclient.AuditLogEntryAction
+	// AuditLogEntryActorType is an AuditLogEntry's verified actor kind —
+	// see the ActorType* constants below.
+	AuditLogEntryActorType = genclient.AuditLogEntryActorType
 	// Error is hush-hush's JSON error body shape, also embedded in APIError.
 	Error = genclient.Error
 )
@@ -33,4 +36,10 @@ const (
 	ActionRead   = genclient.Read
 	ActionUpdate = genclient.Update
 	ActionDelete = genclient.Delete
+)
+
+// Audit log entry actor types, for comparing against AuditLogEntry.ActorType.
+const (
+	ActorTypeSession = genclient.Session
+	ActorTypeToken   = genclient.Token
 )
