@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.0.2](https://github.com/alrayyes/hush-hush-go/compare/v2.0.1...v2.0.2) (2026-09-19)
+
+
+### Bug Fixes
+
+* add /v2 module path suffix for Go semantic import versioning ([#88](https://github.com/alrayyes/hush-hush-go/issues/88)) ([99861d1](https://github.com/alrayyes/hush-hush-go/commit/99861d140b0cfdcd6ece223a4baeefa25cd112a1)), closes [#86](https://github.com/alrayyes/hush-hush-go/issues/86)
+* **deps:** bump github.com/oapi-codegen/oapi-codegen/v2 from 2.4.1 to 2.7.1 ([ee0efe2](https://github.com/alrayyes/hush-hush-go/commit/ee0efe2be9485acb5ad65e17d3e9821fa8b32f3f))
+* regenerate client from updated hush-hush spec ([#87](https://github.com/alrayyes/hush-hush-go/issues/87)) ([0a53917](https://github.com/alrayyes/hush-hush-go/commit/0a539177b5fbea17752c69825680cfbb31bc38b5))
+
 ## [2.0.1](https://github.com/alrayyes/hush-hush-go/compare/v2.0.0...v2.0.1) (2026-09-19)
 
 
