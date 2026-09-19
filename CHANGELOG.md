@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.0.3](https://github.com/alrayyes/hush-hush-go/compare/v2.0.2...v2.0.3) (2026-09-19)
+
+
+### Bug Fixes
+
+* **auditlog:** wire actor filter and cursor pagination into wrapper ([#91](https://github.com/alrayyes/hush-hush-go/issues/91)) ([f64e81d](https://github.com/alrayyes/hush-hush-go/commit/f64e81db561aaf6fe8e5ad1ba4b7a9ebe8b99805)), closes [#74](https://github.com/alrayyes/hush-hush-go/issues/74)
+* regenerate client from updated hush-hush spec ([1922856](https://github.com/alrayyes/hush-hush-go/commit/1922856adb941efd0ccf42ca700862acde0579cc))
+* regenerate client from updated hush-hush spec ([ffbc506](https://github.com/alrayyes/hush-hush-go/commit/ffbc5069ed88c2f59109e8ba083da518e71df349))
+
 ## [2.0.2](https://github.com/alrayyes/hush-hush-go/compare/v2.0.1...v2.0.2) (2026-09-19)
 
 
