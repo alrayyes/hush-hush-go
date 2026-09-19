@@ -17,6 +17,7 @@ permissions:
 jobs:
   smoke:
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     # No job-level `if` on secrets here on purpose — that produced an
     # invalid-workflow failure with zero jobs run when tried (the secrets
     # context isn't reliably usable in a job-level `if`). e2e_test.go itself
