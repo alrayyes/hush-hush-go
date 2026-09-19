@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/alrayyes/hush-hush-go/internal/genclient"
+	"github.com/alrayyes/hush-hush-go/v2/internal/genclient"
 )
 
 // AuditLogFilter narrows a QueryAuditLog call. Filters combine with AND

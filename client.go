@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/alrayyes/hush-hush-go/internal/genclient"
+	"github.com/alrayyes/hush-hush-go/v2/internal/genclient"
 )
 
 const apiKeyEnvVar = "HUSH_HUSH_API_KEY" //nolint:gosec // this is an env var *name*, not a credential value

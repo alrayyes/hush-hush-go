@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	hushhush "github.com/alrayyes/hush-hush-go"
+	hushhush "github.com/alrayyes/hush-hush-go/v2"
 )
 
 func TestClient_Retries503(t *testing.T) {

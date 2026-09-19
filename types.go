@@ -1,6 +1,6 @@
 package hushhush
 
-import "github.com/alrayyes/hush-hush-go/internal/genclient"
+import "github.com/alrayyes/hush-hush-go/v2/internal/genclient"
 
 // These are aliased from the generated package so a caller never needs to
 // import internal/genclient directly — it's internal precisely so nothing

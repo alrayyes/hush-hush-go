@@ -7,7 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	hushhush "github.com/alrayyes/hush-hush-go"
+	hushhush "github.com/alrayyes/hush-hush-go/v2"
 )
 
 func TestNewClient_CredentialFromEnvironment(t *testing.T) {
