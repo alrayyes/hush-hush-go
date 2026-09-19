@@ -30,9 +30,24 @@ const (
 	Update AuditLogEntryAction = "update"
 )
 
+// Defines values for AuditLogEntryActorType.
+const (
+	Session AuditLogEntryActorType = "session"
+	Token   AuditLogEntryActorType = "token"
+)
+
 // AuditLogEntry defines model for AuditLogEntry.
 type AuditLogEntry struct {
 	Action AuditLogEntryAction `json:"action"`
+
+	// ActorId The specific token id or admin account this call was
+	// authenticated as - absent for an unauthenticated read.
+	ActorId *string `json:"actor_id,omitempty"`
+
+	// ActorType The kind of verified credential that authenticated this call -
+	// absent for an unauthenticated read. Unlike caller, this is
+	// never self-reported.
+	ActorType *AuditLogEntryActorType `json:"actor_type,omitempty"`
 
 	// Caller The caller's presented identity, if any.
 	Caller *string `json:"caller,omitempty"`
@@ -50,6 +65,11 @@ type AuditLogEntry struct {
 
 // AuditLogEntryAction defines model for AuditLogEntry.Action.
 type AuditLogEntryAction string
+
+// AuditLogEntryActorType The kind of verified credential that authenticated this call -
+// absent for an unauthenticated read. Unlike caller, this is
+// never self-reported.
+type AuditLogEntryActorType string
 
 // CreateObjectRequest defines model for CreateObjectRequest.
 type CreateObjectRequest struct {
@@ -212,6 +232,9 @@ type Caller = string
 // CsrfToken defines model for csrfToken.
 type CsrfToken = string
 
+// CsrfTokenOptional defines model for csrfTokenOptional.
+type CsrfTokenOptional = string
+
 // Id defines model for id.
 type Id = ObjectId
 
@@ -231,6 +254,11 @@ type QueryAuditLogParams struct {
 
 	// Caller Restrict to entries recorded with this caller identity.
 	Caller *string `form:"caller,omitempty" json:"caller,omitempty"`
+
+	// Actor Restrict to entries authenticated by this verified actor - a
+	// token id, or the admin account's own actor_id. Unlike caller,
+	// this is never self-reported.
+	Actor *string `form:"actor,omitempty" json:"actor,omitempty"`
 
 	// From Restrict to entries at or after this time.
 	From *time.Time `form:"from,omitempty" json:"from,omitempty"`
@@ -283,6 +311,13 @@ type CreateObjectParams struct {
 	// an identity check the service performs. Absent means the
 	// resulting audit log entry's caller field is empty.
 	XCaller *Caller `json:"X-Caller,omitempty"`
+
+	// XCSRFToken The current session's own CSRF token - required when the request
+	// is authenticated by a session, not present or checked when it's
+	// authenticated by a bearer token instead (which has no session, and
+	// so no CSRF token to send). See `csrfToken` for the always-required
+	// form used where session auth is the only option.
+	XCSRFToken *CsrfTokenOptional `json:"X-CSRF-Token,omitempty"`
 }
 
 // DeleteObjectParams defines parameters for DeleteObject.
@@ -293,6 +328,13 @@ type DeleteObjectParams struct {
 	// an identity check the service performs. Absent means the
 	// resulting audit log entry's caller field is empty.
 	XCaller *Caller `json:"X-Caller,omitempty"`
+
+	// XCSRFToken The current session's own CSRF token - required when the request
+	// is authenticated by a session, not present or checked when it's
+	// authenticated by a bearer token instead (which has no session, and
+	// so no CSRF token to send). See `csrfToken` for the always-required
+	// form used where session auth is the only option.
+	XCSRFToken *CsrfTokenOptional `json:"X-CSRF-Token,omitempty"`
 }
 
 // GetObjectParams defines parameters for GetObject.
@@ -313,6 +355,33 @@ type UpdateObjectParams struct {
 	// an identity check the service performs. Absent means the
 	// resulting audit log entry's caller field is empty.
 	XCaller *Caller `json:"X-Caller,omitempty"`
+
+	// XCSRFToken The current session's own CSRF token - required when the request
+	// is authenticated by a session, not present or checked when it's
+	// authenticated by a bearer token instead (which has no session, and
+	// so no CSRF token to send). See `csrfToken` for the always-required
+	// form used where session auth is the only option.
+	XCSRFToken *CsrfTokenOptional `json:"X-CSRF-Token,omitempty"`
+}
+
+// CreateTokenParams defines parameters for CreateToken.
+type CreateTokenParams struct {
+	// XCSRFToken The current session's own CSRF token - required on every
+	// session-authenticated request that changes state. Delivered as a
+	// second, readable `csrf_token` cookie alongside the (httpOnly)
+	// session cookie at login/registration time; the frontend reads that
+	// cookie and echoes its value back here.
+	XCSRFToken CsrfToken `json:"X-CSRF-Token"`
+}
+
+// RevokeTokenParams defines parameters for RevokeToken.
+type RevokeTokenParams struct {
+	// XCSRFToken The current session's own CSRF token - required on every
+	// session-authenticated request that changes state. Delivered as a
+	// second, readable `csrf_token` cookie alongside the (httpOnly)
+	// session cookie at login/registration time; the frontend reads that
+	// cookie and echoes its value back here.
+	XCSRFToken CsrfToken `json:"X-CSRF-Token"`
 }
 
 // FinishLoginJSONRequestBody defines body for FinishLogin for application/json ContentType.
@@ -468,12 +537,12 @@ type ClientInterface interface {
 	ListTokens(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateTokenWithBody request with any body
-	CreateTokenWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateTokenWithBody(ctx context.Context, params *CreateTokenParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CreateToken(ctx context.Context, body CreateTokenJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateToken(ctx context.Context, params *CreateTokenParams, body CreateTokenJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// RevokeToken request
-	RevokeToken(ctx context.Context, id TokenId, reqEditors ...RequestEditorFn) (*http.Response, error)
+	RevokeToken(ctx context.Context, id TokenId, params *RevokeTokenParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 func (c *Client) QueryAuditLog(ctx context.Context, params *QueryAuditLogParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -740,8 +809,8 @@ func (c *Client) ListTokens(ctx context.Context, reqEditors ...RequestEditorFn) 
 	return c.Client.Do(req)
 }
 
-func (c *Client) CreateTokenWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreateTokenRequestWithBody(c.Server, contentType, body)
+func (c *Client) CreateTokenWithBody(ctx context.Context, params *CreateTokenParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateTokenRequestWithBody(c.Server, params, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -752,8 +821,8 @@ func (c *Client) CreateTokenWithBody(ctx context.Context, contentType string, bo
 	return c.Client.Do(req)
 }
 
-func (c *Client) CreateToken(ctx context.Context, body CreateTokenJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreateTokenRequest(c.Server, body)
+func (c *Client) CreateToken(ctx context.Context, params *CreateTokenParams, body CreateTokenJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateTokenRequest(c.Server, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -764,8 +833,8 @@ func (c *Client) CreateToken(ctx context.Context, body CreateTokenJSONRequestBod
 	return c.Client.Do(req)
 }
 
-func (c *Client) RevokeToken(ctx context.Context, id TokenId, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewRevokeTokenRequest(c.Server, id)
+func (c *Client) RevokeToken(ctx context.Context, id TokenId, params *RevokeTokenParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRevokeTokenRequest(c.Server, id, params)
 	if err != nil {
 		return nil, err
 	}
@@ -817,6 +886,22 @@ func NewQueryAuditLogRequest(server string, params *QueryAuditLogParams) (*http.
 		if params.Caller != nil {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "caller", runtime.ParamLocationQuery, *params.Caller); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Actor != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "actor", runtime.ParamLocationQuery, *params.Actor); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -1307,6 +1392,17 @@ func NewCreateObjectRequestWithBody(server string, params *CreateObjectParams, c
 			req.Header.Set("X-Caller", headerParam0)
 		}
 
+		if params.XCSRFToken != nil {
+			var headerParam1 string
+
+			headerParam1, err = runtime.StyleParamWithLocation("simple", false, "X-CSRF-Token", runtime.ParamLocationHeader, *params.XCSRFToken)
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("X-CSRF-Token", headerParam1)
+		}
+
 	}
 
 	return req, nil
@@ -1354,6 +1450,17 @@ func NewDeleteObjectRequest(server string, id Id, params *DeleteObjectParams) (*
 			}
 
 			req.Header.Set("X-Caller", headerParam0)
+		}
+
+		if params.XCSRFToken != nil {
+			var headerParam1 string
+
+			headerParam1, err = runtime.StyleParamWithLocation("simple", false, "X-CSRF-Token", runtime.ParamLocationHeader, *params.XCSRFToken)
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("X-CSRF-Token", headerParam1)
 		}
 
 	}
@@ -1467,6 +1574,17 @@ func NewUpdateObjectRequestWithBody(server string, id Id, params *UpdateObjectPa
 			req.Header.Set("X-Caller", headerParam0)
 		}
 
+		if params.XCSRFToken != nil {
+			var headerParam1 string
+
+			headerParam1, err = runtime.StyleParamWithLocation("simple", false, "X-CSRF-Token", runtime.ParamLocationHeader, *params.XCSRFToken)
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("X-CSRF-Token", headerParam1)
+		}
+
 	}
 
 	return req, nil
@@ -1534,18 +1652,18 @@ func NewListTokensRequest(server string) (*http.Request, error) {
 }
 
 // NewCreateTokenRequest calls the generic CreateToken builder with application/json body
-func NewCreateTokenRequest(server string, body CreateTokenJSONRequestBody) (*http.Request, error) {
+func NewCreateTokenRequest(server string, params *CreateTokenParams, body CreateTokenJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewCreateTokenRequestWithBody(server, "application/json", bodyReader)
+	return NewCreateTokenRequestWithBody(server, params, "application/json", bodyReader)
 }
 
 // NewCreateTokenRequestWithBody generates requests for CreateToken with any type of body
-func NewCreateTokenRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+func NewCreateTokenRequestWithBody(server string, params *CreateTokenParams, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -1570,11 +1688,24 @@ func NewCreateTokenRequestWithBody(server string, contentType string, body io.Re
 
 	req.Header.Add("Content-Type", contentType)
 
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithLocation("simple", false, "X-CSRF-Token", runtime.ParamLocationHeader, params.XCSRFToken)
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("X-CSRF-Token", headerParam0)
+
+	}
+
 	return req, nil
 }
 
 // NewRevokeTokenRequest generates requests for RevokeToken
-func NewRevokeTokenRequest(server string, id TokenId) (*http.Request, error) {
+func NewRevokeTokenRequest(server string, id TokenId, params *RevokeTokenParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -1602,6 +1733,19 @@ func NewRevokeTokenRequest(server string, id TokenId) (*http.Request, error) {
 	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithLocation("simple", false, "X-CSRF-Token", runtime.ParamLocationHeader, params.XCSRFToken)
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("X-CSRF-Token", headerParam0)
+
 	}
 
 	return req, nil
@@ -1712,12 +1856,12 @@ type ClientWithResponsesInterface interface {
 	ListTokensWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListTokensResponse, error)
 
 	// CreateTokenWithBodyWithResponse request with any body
-	CreateTokenWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTokenResponse, error)
+	CreateTokenWithBodyWithResponse(ctx context.Context, params *CreateTokenParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTokenResponse, error)
 
-	CreateTokenWithResponse(ctx context.Context, body CreateTokenJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTokenResponse, error)
+	CreateTokenWithResponse(ctx context.Context, params *CreateTokenParams, body CreateTokenJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTokenResponse, error)
 
 	// RevokeTokenWithResponse request
-	RevokeTokenWithResponse(ctx context.Context, id TokenId, reqEditors ...RequestEditorFn) (*RevokeTokenResponse, error)
+	RevokeTokenWithResponse(ctx context.Context, id TokenId, params *RevokeTokenParams, reqEditors ...RequestEditorFn) (*RevokeTokenResponse, error)
 }
 
 type QueryAuditLogResponse struct {
@@ -2353,16 +2497,16 @@ func (c *ClientWithResponses) ListTokensWithResponse(ctx context.Context, reqEdi
 }
 
 // CreateTokenWithBodyWithResponse request with arbitrary body returning *CreateTokenResponse
-func (c *ClientWithResponses) CreateTokenWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTokenResponse, error) {
-	rsp, err := c.CreateTokenWithBody(ctx, contentType, body, reqEditors...)
+func (c *ClientWithResponses) CreateTokenWithBodyWithResponse(ctx context.Context, params *CreateTokenParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTokenResponse, error) {
+	rsp, err := c.CreateTokenWithBody(ctx, params, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseCreateTokenResponse(rsp)
 }
 
-func (c *ClientWithResponses) CreateTokenWithResponse(ctx context.Context, body CreateTokenJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTokenResponse, error) {
-	rsp, err := c.CreateToken(ctx, body, reqEditors...)
+func (c *ClientWithResponses) CreateTokenWithResponse(ctx context.Context, params *CreateTokenParams, body CreateTokenJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTokenResponse, error) {
+	rsp, err := c.CreateToken(ctx, params, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -2370,8 +2514,8 @@ func (c *ClientWithResponses) CreateTokenWithResponse(ctx context.Context, body 
 }
 
 // RevokeTokenWithResponse request returning *RevokeTokenResponse
-func (c *ClientWithResponses) RevokeTokenWithResponse(ctx context.Context, id TokenId, reqEditors ...RequestEditorFn) (*RevokeTokenResponse, error) {
-	rsp, err := c.RevokeToken(ctx, id, reqEditors...)
+func (c *ClientWithResponses) RevokeTokenWithResponse(ctx context.Context, id TokenId, params *RevokeTokenParams, reqEditors ...RequestEditorFn) (*RevokeTokenResponse, error) {
+	rsp, err := c.RevokeToken(ctx, id, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
