@@ -13,7 +13,7 @@ generated from its OpenAPI spec and kept in sync with it automatically.
 ## Install
 
 ```sh
-go get github.com/alrayyes/hush-hush-go
+go get github.com/alrayyes/hush-hush-go/v2
 ```
 
 Requires Go 1.26 or newer.
@@ -28,7 +28,7 @@ import (
 	"fmt"
 	"log"
 
-	hushhush "github.com/alrayyes/hush-hush-go"
+	hushhush "github.com/alrayyes/hush-hush-go/v2"
 )
 
 func main() {

@@ -15,7 +15,7 @@ import (
 	"github.com/pact-foundation/pact-go/v2/consumer"
 	"github.com/pact-foundation/pact-go/v2/matchers"
 
-	hushhush "github.com/alrayyes/hush-hush-go"
+	hushhush "github.com/alrayyes/hush-hush-go/v2"
 )
 
 func newMockProvider(t *testing.T) *consumer.V2HTTPMockProvider {
