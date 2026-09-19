@@ -19,6 +19,7 @@ import (
 
 const (
 	BearerAuthScopes = "bearerAuth.Scopes"
+	CookieAuthScopes = "cookieAuth.Scopes"
 )
 
 // Defines values for AuditLogEntryAction.
@@ -66,6 +67,32 @@ type CreateObjectRequest struct {
 	Value []byte `json:"value"`
 }
 
+// CreateTokenRequest defines model for CreateTokenRequest.
+type CreateTokenRequest struct {
+	Description string `json:"description"`
+
+	// TtlSeconds How long the token stays valid for, starting now.
+	TtlSeconds int64 `json:"ttl_seconds"`
+}
+
+// Credential defines model for Credential.
+type Credential struct {
+	CreatedAt time.Time    `json:"created_at"`
+	Id        CredentialId `json:"id"`
+
+	// LastUsedAt Absent if this credential has never been used to log in.
+	LastUsedAt *time.Time `json:"last_used_at,omitempty"`
+	Nickname   string     `json:"nickname"`
+}
+
+// CredentialId defines model for CredentialId.
+type CredentialId = string
+
+// CredentialRenameRequest defines model for CredentialRenameRequest.
+type CredentialRenameRequest struct {
+	Nickname string `json:"nickname"`
+}
+
 // Error defines model for Error.
 type Error struct {
 	// Error What went wrong, in terms safe to show a caller. Nothing here
@@ -77,6 +104,17 @@ type Error struct {
 type Health struct {
 	Status string `json:"status"`
 }
+
+// LoginFinishRequest defines model for LoginFinishRequest.
+type LoginFinishRequest struct {
+	// Credential The browser's assertion response, exactly as
+	// `navigator.credentials.get()` returned it.
+	Credential map[string]interface{} `json:"credential"`
+}
+
+// LoginOptions A WebAuthn `PublicKeyCredentialRequestOptions` object, passed
+// straight to the browser's `navigator.credentials.get()`.
+type LoginOptions map[string]interface{}
 
 // ObjectDescription A free-text label set at creation, for a reader who only knows the
 // id. Fixed at creation - the same as used_by, it is unaffected by a
@@ -99,6 +137,58 @@ type ObjectMetadata struct {
 	UsedBy *UsedByList `json:"used_by,omitempty"`
 }
 
+// RegistrationFinishRequest defines model for RegistrationFinishRequest.
+type RegistrationFinishRequest struct {
+	// Credential The browser's attestation response, exactly as
+	// `navigator.credentials.create()` returned it.
+	Credential map[string]interface{} `json:"credential"`
+
+	// Nickname A human-readable label for this credential, shown in the credentials list.
+	Nickname *string `json:"nickname,omitempty"`
+}
+
+// RegistrationOptions A WebAuthn `PublicKeyCredentialCreationOptions` object, passed
+// straight to the browser's `navigator.credentials.create()` -
+// opaque to this service's own clients, defined by the WebAuthn
+// specification rather than reproduced here field by field.
+type RegistrationOptions map[string]interface{}
+
+// TokenId defines model for TokenId.
+type TokenId = string
+
+// TokenMetadata defines model for TokenMetadata.
+type TokenMetadata struct {
+	CreatedAt   time.Time `json:"created_at"`
+	Description string    `json:"description"`
+	ExpiresAt   time.Time `json:"expires_at"`
+	Id          TokenId   `json:"id"`
+
+	// Owner The admin account that created this token over HTTP. Absent
+	// for a token issued via the `token` CLI command, which has no
+	// session to attribute to - never a guessed value.
+	Owner   *string `json:"owner,omitempty"`
+	Revoked bool    `json:"revoked"`
+}
+
+// TokenWithValue defines model for TokenWithValue.
+type TokenWithValue struct {
+	CreatedAt   time.Time `json:"created_at"`
+	Description string    `json:"description"`
+	ExpiresAt   time.Time `json:"expires_at"`
+	Id          TokenId   `json:"id"`
+
+	// Owner The admin account that created this token over HTTP. Absent
+	// for a token issued via the `token` CLI command, which has no
+	// session to attribute to - never a guessed value.
+	Owner   *string `json:"owner,omitempty"`
+	Revoked bool    `json:"revoked"`
+
+	// Value The raw bearer token. Shown here once, at creation, and
+	// never again - the same as a token issued via the `token`
+	// CLI command.
+	Value string `json:"value"`
+}
+
 // UpdateObjectRequest defines model for UpdateObjectRequest.
 type UpdateObjectRequest struct {
 	// Value The new sealed (encrypted) value, base64-encoded.
@@ -118,6 +208,9 @@ type UsedByList = []string
 
 // Caller defines model for caller.
 type Caller = string
+
+// CsrfToken defines model for csrfToken.
+type CsrfToken = string
 
 // Id defines model for id.
 type Id = ObjectId
@@ -144,6 +237,36 @@ type QueryAuditLogParams struct {
 
 	// To Restrict to entries at or before this time.
 	To *time.Time `form:"to,omitempty" json:"to,omitempty"`
+}
+
+// LogoutParams defines parameters for Logout.
+type LogoutParams struct {
+	// XCSRFToken The current session's own CSRF token - required on every
+	// session-authenticated request that changes state. Delivered as a
+	// second, readable `csrf_token` cookie alongside the (httpOnly)
+	// session cookie at login/registration time; the frontend reads that
+	// cookie and echoes its value back here.
+	XCSRFToken CsrfToken `json:"X-CSRF-Token"`
+}
+
+// DeleteCredentialParams defines parameters for DeleteCredential.
+type DeleteCredentialParams struct {
+	// XCSRFToken The current session's own CSRF token - required on every
+	// session-authenticated request that changes state. Delivered as a
+	// second, readable `csrf_token` cookie alongside the (httpOnly)
+	// session cookie at login/registration time; the frontend reads that
+	// cookie and echoes its value back here.
+	XCSRFToken CsrfToken `json:"X-CSRF-Token"`
+}
+
+// RenameCredentialParams defines parameters for RenameCredential.
+type RenameCredentialParams struct {
+	// XCSRFToken The current session's own CSRF token - required on every
+	// session-authenticated request that changes state. Delivered as a
+	// second, readable `csrf_token` cookie alongside the (httpOnly)
+	// session cookie at login/registration time; the frontend reads that
+	// cookie and echoes its value back here.
+	XCSRFToken CsrfToken `json:"X-CSRF-Token"`
 }
 
 // ListObjectsParams defines parameters for ListObjects.
@@ -192,11 +315,23 @@ type UpdateObjectParams struct {
 	XCaller *Caller `json:"X-Caller,omitempty"`
 }
 
+// FinishLoginJSONRequestBody defines body for FinishLogin for application/json ContentType.
+type FinishLoginJSONRequestBody = LoginFinishRequest
+
+// FinishRegistrationJSONRequestBody defines body for FinishRegistration for application/json ContentType.
+type FinishRegistrationJSONRequestBody = RegistrationFinishRequest
+
+// RenameCredentialJSONRequestBody defines body for RenameCredential for application/json ContentType.
+type RenameCredentialJSONRequestBody = CredentialRenameRequest
+
 // CreateObjectJSONRequestBody defines body for CreateObject for application/json ContentType.
 type CreateObjectJSONRequestBody = CreateObjectRequest
 
 // UpdateObjectJSONRequestBody defines body for UpdateObject for application/json ContentType.
 type UpdateObjectJSONRequestBody = UpdateObjectRequest
+
+// CreateTokenJSONRequestBody defines body for CreateToken for application/json ContentType.
+type CreateTokenJSONRequestBody = CreateTokenRequest
 
 // RequestEditorFn  is the function signature for the RequestEditor callback function
 type RequestEditorFn func(ctx context.Context, req *http.Request) error
@@ -274,6 +409,36 @@ type ClientInterface interface {
 	// QueryAuditLog request
 	QueryAuditLog(ctx context.Context, params *QueryAuditLogParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// BeginLogin request
+	BeginLogin(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// FinishLoginWithBody request with any body
+	FinishLoginWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	FinishLogin(ctx context.Context, body FinishLoginJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// Logout request
+	Logout(ctx context.Context, params *LogoutParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// BeginRegistration request
+	BeginRegistration(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// FinishRegistrationWithBody request with any body
+	FinishRegistrationWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	FinishRegistration(ctx context.Context, body FinishRegistrationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListCredentials request
+	ListCredentials(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteCredential request
+	DeleteCredential(ctx context.Context, id CredentialId, params *DeleteCredentialParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RenameCredentialWithBody request with any body
+	RenameCredentialWithBody(ctx context.Context, id CredentialId, params *RenameCredentialParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	RenameCredential(ctx context.Context, id CredentialId, params *RenameCredentialParams, body RenameCredentialJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// Health request
 	Health(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -298,10 +463,153 @@ type ClientInterface interface {
 
 	// GetObjectUsedBy request
 	GetObjectUsedBy(ctx context.Context, id Id, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListTokens request
+	ListTokens(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateTokenWithBody request with any body
+	CreateTokenWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	CreateToken(ctx context.Context, body CreateTokenJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RevokeToken request
+	RevokeToken(ctx context.Context, id TokenId, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 func (c *Client) QueryAuditLog(ctx context.Context, params *QueryAuditLogParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewQueryAuditLogRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) BeginLogin(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewBeginLoginRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) FinishLoginWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewFinishLoginRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) FinishLogin(ctx context.Context, body FinishLoginJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewFinishLoginRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) Logout(ctx context.Context, params *LogoutParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewLogoutRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) BeginRegistration(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewBeginRegistrationRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) FinishRegistrationWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewFinishRegistrationRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) FinishRegistration(ctx context.Context, body FinishRegistrationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewFinishRegistrationRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) ListCredentials(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListCredentialsRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) DeleteCredential(ctx context.Context, id CredentialId, params *DeleteCredentialParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteCredentialRequest(c.Server, id, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) RenameCredentialWithBody(ctx context.Context, id CredentialId, params *RenameCredentialParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRenameCredentialRequestWithBody(c.Server, id, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) RenameCredential(ctx context.Context, id CredentialId, params *RenameCredentialParams, body RenameCredentialJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRenameCredentialRequest(c.Server, id, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -420,6 +728,54 @@ func (c *Client) GetObjectUsedBy(ctx context.Context, id Id, reqEditors ...Reque
 	return c.Client.Do(req)
 }
 
+func (c *Client) ListTokens(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListTokensRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) CreateTokenWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateTokenRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) CreateToken(ctx context.Context, body CreateTokenJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateTokenRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) RevokeToken(ctx context.Context, id TokenId, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRevokeTokenRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // NewQueryAuditLogRequest generates requests for QueryAuditLog
 func NewQueryAuditLogRequest(server string, params *QueryAuditLogParams) (*http.Request, error) {
 	var err error
@@ -512,6 +868,314 @@ func NewQueryAuditLogRequest(server string, params *QueryAuditLogParams) (*http.
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
 	if err != nil {
 		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewBeginLoginRequest generates requests for BeginLogin
+func NewBeginLoginRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/auth/login/begin")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewFinishLoginRequest calls the generic FinishLogin builder with application/json body
+func NewFinishLoginRequest(server string, body FinishLoginJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewFinishLoginRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewFinishLoginRequestWithBody generates requests for FinishLogin with any type of body
+func NewFinishLoginRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/auth/login/finish")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewLogoutRequest generates requests for Logout
+func NewLogoutRequest(server string, params *LogoutParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/auth/logout")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithLocation("simple", false, "X-CSRF-Token", runtime.ParamLocationHeader, params.XCSRFToken)
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("X-CSRF-Token", headerParam0)
+
+	}
+
+	return req, nil
+}
+
+// NewBeginRegistrationRequest generates requests for BeginRegistration
+func NewBeginRegistrationRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/auth/register/begin")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewFinishRegistrationRequest calls the generic FinishRegistration builder with application/json body
+func NewFinishRegistrationRequest(server string, body FinishRegistrationJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewFinishRegistrationRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewFinishRegistrationRequestWithBody generates requests for FinishRegistration with any type of body
+func NewFinishRegistrationRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/auth/register/finish")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListCredentialsRequest generates requests for ListCredentials
+func NewListCredentialsRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/credentials")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewDeleteCredentialRequest generates requests for DeleteCredential
+func NewDeleteCredentialRequest(server string, id CredentialId, params *DeleteCredentialParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "id", runtime.ParamLocationPath, id)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/credentials/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithLocation("simple", false, "X-CSRF-Token", runtime.ParamLocationHeader, params.XCSRFToken)
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("X-CSRF-Token", headerParam0)
+
+	}
+
+	return req, nil
+}
+
+// NewRenameCredentialRequest calls the generic RenameCredential builder with application/json body
+func NewRenameCredentialRequest(server string, id CredentialId, params *RenameCredentialParams, body RenameCredentialJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewRenameCredentialRequestWithBody(server, id, params, "application/json", bodyReader)
+}
+
+// NewRenameCredentialRequestWithBody generates requests for RenameCredential with any type of body
+func NewRenameCredentialRequestWithBody(server string, id CredentialId, params *RenameCredentialParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "id", runtime.ParamLocationPath, id)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/credentials/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("PATCH", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithLocation("simple", false, "X-CSRF-Token", runtime.ParamLocationHeader, params.XCSRFToken)
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("X-CSRF-Token", headerParam0)
+
 	}
 
 	return req, nil
@@ -842,6 +1506,107 @@ func NewGetObjectUsedByRequest(server string, id Id) (*http.Request, error) {
 	return req, nil
 }
 
+// NewListTokensRequest generates requests for ListTokens
+func NewListTokensRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tokens")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateTokenRequest calls the generic CreateToken builder with application/json body
+func NewCreateTokenRequest(server string, body CreateTokenJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateTokenRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCreateTokenRequestWithBody generates requests for CreateToken with any type of body
+func NewCreateTokenRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tokens")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewRevokeTokenRequest generates requests for RevokeToken
+func NewRevokeTokenRequest(server string, id TokenId) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "id", runtime.ParamLocationPath, id)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tokens/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 func (c *Client) applyEditors(ctx context.Context, req *http.Request, additionalEditors []RequestEditorFn) error {
 	for _, r := range c.RequestEditors {
 		if err := r(ctx, req); err != nil {
@@ -888,6 +1653,36 @@ type ClientWithResponsesInterface interface {
 	// QueryAuditLogWithResponse request
 	QueryAuditLogWithResponse(ctx context.Context, params *QueryAuditLogParams, reqEditors ...RequestEditorFn) (*QueryAuditLogResponse, error)
 
+	// BeginLoginWithResponse request
+	BeginLoginWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*BeginLoginResponse, error)
+
+	// FinishLoginWithBodyWithResponse request with any body
+	FinishLoginWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*FinishLoginResponse, error)
+
+	FinishLoginWithResponse(ctx context.Context, body FinishLoginJSONRequestBody, reqEditors ...RequestEditorFn) (*FinishLoginResponse, error)
+
+	// LogoutWithResponse request
+	LogoutWithResponse(ctx context.Context, params *LogoutParams, reqEditors ...RequestEditorFn) (*LogoutResponse, error)
+
+	// BeginRegistrationWithResponse request
+	BeginRegistrationWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*BeginRegistrationResponse, error)
+
+	// FinishRegistrationWithBodyWithResponse request with any body
+	FinishRegistrationWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*FinishRegistrationResponse, error)
+
+	FinishRegistrationWithResponse(ctx context.Context, body FinishRegistrationJSONRequestBody, reqEditors ...RequestEditorFn) (*FinishRegistrationResponse, error)
+
+	// ListCredentialsWithResponse request
+	ListCredentialsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListCredentialsResponse, error)
+
+	// DeleteCredentialWithResponse request
+	DeleteCredentialWithResponse(ctx context.Context, id CredentialId, params *DeleteCredentialParams, reqEditors ...RequestEditorFn) (*DeleteCredentialResponse, error)
+
+	// RenameCredentialWithBodyWithResponse request with any body
+	RenameCredentialWithBodyWithResponse(ctx context.Context, id CredentialId, params *RenameCredentialParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RenameCredentialResponse, error)
+
+	RenameCredentialWithResponse(ctx context.Context, id CredentialId, params *RenameCredentialParams, body RenameCredentialJSONRequestBody, reqEditors ...RequestEditorFn) (*RenameCredentialResponse, error)
+
 	// HealthWithResponse request
 	HealthWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*HealthResponse, error)
 
@@ -912,6 +1707,17 @@ type ClientWithResponsesInterface interface {
 
 	// GetObjectUsedByWithResponse request
 	GetObjectUsedByWithResponse(ctx context.Context, id Id, reqEditors ...RequestEditorFn) (*GetObjectUsedByResponse, error)
+
+	// ListTokensWithResponse request
+	ListTokensWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListTokensResponse, error)
+
+	// CreateTokenWithBodyWithResponse request with any body
+	CreateTokenWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTokenResponse, error)
+
+	CreateTokenWithResponse(ctx context.Context, body CreateTokenJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTokenResponse, error)
+
+	// RevokeTokenWithResponse request
+	RevokeTokenWithResponse(ctx context.Context, id TokenId, reqEditors ...RequestEditorFn) (*RevokeTokenResponse, error)
 }
 
 type QueryAuditLogResponse struct {
@@ -931,6 +1737,192 @@ func (r QueryAuditLogResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r QueryAuditLogResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type BeginLoginResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *LoginOptions
+	JSON400      *Error
+}
+
+// Status returns HTTPResponse.Status
+func (r BeginLoginResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r BeginLoginResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type FinishLoginResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON401      *Unauthorized
+}
+
+// Status returns HTTPResponse.Status
+func (r FinishLoginResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r FinishLoginResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type LogoutResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON401      *Unauthorized
+}
+
+// Status returns HTTPResponse.Status
+func (r LogoutResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r LogoutResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type BeginRegistrationResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *RegistrationOptions
+	JSON400      *BadRequest
+	JSON401      *Unauthorized
+}
+
+// Status returns HTTPResponse.Status
+func (r BeginRegistrationResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r BeginRegistrationResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type FinishRegistrationResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *Credential
+	JSON400      *BadRequest
+	JSON401      *Unauthorized
+}
+
+// Status returns HTTPResponse.Status
+func (r FinishRegistrationResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r FinishRegistrationResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type ListCredentialsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *[]Credential
+	JSON401      *Unauthorized
+}
+
+// Status returns HTTPResponse.Status
+func (r ListCredentialsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListCredentialsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type DeleteCredentialResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON401      *Unauthorized
+	JSON404      *NotFound
+	JSON409      *Error
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteCredentialResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteCredentialResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type RenameCredentialResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *Credential
+	JSON401      *Unauthorized
+	JSON404      *NotFound
+}
+
+// Status returns HTTPResponse.Status
+func (r RenameCredentialResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RenameCredentialResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -1098,6 +2090,75 @@ func (r GetObjectUsedByResponse) StatusCode() int {
 	return 0
 }
 
+type ListTokensResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *[]TokenMetadata
+	JSON401      *Unauthorized
+}
+
+// Status returns HTTPResponse.Status
+func (r ListTokensResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListTokensResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type CreateTokenResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *TokenWithValue
+	JSON400      *BadRequest
+	JSON401      *Unauthorized
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateTokenResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateTokenResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type RevokeTokenResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON401      *Unauthorized
+}
+
+// Status returns HTTPResponse.Status
+func (r RevokeTokenResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RevokeTokenResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 // QueryAuditLogWithResponse request returning *QueryAuditLogResponse
 func (c *ClientWithResponses) QueryAuditLogWithResponse(ctx context.Context, params *QueryAuditLogParams, reqEditors ...RequestEditorFn) (*QueryAuditLogResponse, error) {
 	rsp, err := c.QueryAuditLog(ctx, params, reqEditors...)
@@ -1105,6 +2166,102 @@ func (c *ClientWithResponses) QueryAuditLogWithResponse(ctx context.Context, par
 		return nil, err
 	}
 	return ParseQueryAuditLogResponse(rsp)
+}
+
+// BeginLoginWithResponse request returning *BeginLoginResponse
+func (c *ClientWithResponses) BeginLoginWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*BeginLoginResponse, error) {
+	rsp, err := c.BeginLogin(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseBeginLoginResponse(rsp)
+}
+
+// FinishLoginWithBodyWithResponse request with arbitrary body returning *FinishLoginResponse
+func (c *ClientWithResponses) FinishLoginWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*FinishLoginResponse, error) {
+	rsp, err := c.FinishLoginWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseFinishLoginResponse(rsp)
+}
+
+func (c *ClientWithResponses) FinishLoginWithResponse(ctx context.Context, body FinishLoginJSONRequestBody, reqEditors ...RequestEditorFn) (*FinishLoginResponse, error) {
+	rsp, err := c.FinishLogin(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseFinishLoginResponse(rsp)
+}
+
+// LogoutWithResponse request returning *LogoutResponse
+func (c *ClientWithResponses) LogoutWithResponse(ctx context.Context, params *LogoutParams, reqEditors ...RequestEditorFn) (*LogoutResponse, error) {
+	rsp, err := c.Logout(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseLogoutResponse(rsp)
+}
+
+// BeginRegistrationWithResponse request returning *BeginRegistrationResponse
+func (c *ClientWithResponses) BeginRegistrationWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*BeginRegistrationResponse, error) {
+	rsp, err := c.BeginRegistration(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseBeginRegistrationResponse(rsp)
+}
+
+// FinishRegistrationWithBodyWithResponse request with arbitrary body returning *FinishRegistrationResponse
+func (c *ClientWithResponses) FinishRegistrationWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*FinishRegistrationResponse, error) {
+	rsp, err := c.FinishRegistrationWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseFinishRegistrationResponse(rsp)
+}
+
+func (c *ClientWithResponses) FinishRegistrationWithResponse(ctx context.Context, body FinishRegistrationJSONRequestBody, reqEditors ...RequestEditorFn) (*FinishRegistrationResponse, error) {
+	rsp, err := c.FinishRegistration(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseFinishRegistrationResponse(rsp)
+}
+
+// ListCredentialsWithResponse request returning *ListCredentialsResponse
+func (c *ClientWithResponses) ListCredentialsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListCredentialsResponse, error) {
+	rsp, err := c.ListCredentials(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListCredentialsResponse(rsp)
+}
+
+// DeleteCredentialWithResponse request returning *DeleteCredentialResponse
+func (c *ClientWithResponses) DeleteCredentialWithResponse(ctx context.Context, id CredentialId, params *DeleteCredentialParams, reqEditors ...RequestEditorFn) (*DeleteCredentialResponse, error) {
+	rsp, err := c.DeleteCredential(ctx, id, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteCredentialResponse(rsp)
+}
+
+// RenameCredentialWithBodyWithResponse request with arbitrary body returning *RenameCredentialResponse
+func (c *ClientWithResponses) RenameCredentialWithBodyWithResponse(ctx context.Context, id CredentialId, params *RenameCredentialParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RenameCredentialResponse, error) {
+	rsp, err := c.RenameCredentialWithBody(ctx, id, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRenameCredentialResponse(rsp)
+}
+
+func (c *ClientWithResponses) RenameCredentialWithResponse(ctx context.Context, id CredentialId, params *RenameCredentialParams, body RenameCredentialJSONRequestBody, reqEditors ...RequestEditorFn) (*RenameCredentialResponse, error) {
+	rsp, err := c.RenameCredential(ctx, id, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRenameCredentialResponse(rsp)
 }
 
 // HealthWithResponse request returning *HealthResponse
@@ -1186,6 +2343,41 @@ func (c *ClientWithResponses) GetObjectUsedByWithResponse(ctx context.Context, i
 	return ParseGetObjectUsedByResponse(rsp)
 }
 
+// ListTokensWithResponse request returning *ListTokensResponse
+func (c *ClientWithResponses) ListTokensWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListTokensResponse, error) {
+	rsp, err := c.ListTokens(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListTokensResponse(rsp)
+}
+
+// CreateTokenWithBodyWithResponse request with arbitrary body returning *CreateTokenResponse
+func (c *ClientWithResponses) CreateTokenWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTokenResponse, error) {
+	rsp, err := c.CreateTokenWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateTokenResponse(rsp)
+}
+
+func (c *ClientWithResponses) CreateTokenWithResponse(ctx context.Context, body CreateTokenJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTokenResponse, error) {
+	rsp, err := c.CreateToken(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateTokenResponse(rsp)
+}
+
+// RevokeTokenWithResponse request returning *RevokeTokenResponse
+func (c *ClientWithResponses) RevokeTokenWithResponse(ctx context.Context, id TokenId, reqEditors ...RequestEditorFn) (*RevokeTokenResponse, error) {
+	rsp, err := c.RevokeToken(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRevokeTokenResponse(rsp)
+}
+
 // ParseQueryAuditLogResponse parses an HTTP response from a QueryAuditLogWithResponse call
 func ParseQueryAuditLogResponse(rsp *http.Response) (*QueryAuditLogResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -1213,6 +2405,284 @@ func ParseQueryAuditLogResponse(rsp *http.Response) (*QueryAuditLogResponse, err
 			return nil, err
 		}
 		response.JSON400 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseBeginLoginResponse parses an HTTP response from a BeginLoginWithResponse call
+func ParseBeginLoginResponse(rsp *http.Response) (*BeginLoginResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &BeginLoginResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest LoginOptions
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseFinishLoginResponse parses an HTTP response from a FinishLoginWithResponse call
+func ParseFinishLoginResponse(rsp *http.Response) (*FinishLoginResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &FinishLoginResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseLogoutResponse parses an HTTP response from a LogoutWithResponse call
+func ParseLogoutResponse(rsp *http.Response) (*LogoutResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &LogoutResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseBeginRegistrationResponse parses an HTTP response from a BeginRegistrationWithResponse call
+func ParseBeginRegistrationResponse(rsp *http.Response) (*BeginRegistrationResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &BeginRegistrationResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest RegistrationOptions
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseFinishRegistrationResponse parses an HTTP response from a FinishRegistrationWithResponse call
+func ParseFinishRegistrationResponse(rsp *http.Response) (*FinishRegistrationResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &FinishRegistrationResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest Credential
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListCredentialsResponse parses an HTTP response from a ListCredentialsWithResponse call
+func ParseListCredentialsResponse(rsp *http.Response) (*ListCredentialsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListCredentialsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []Credential
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteCredentialResponse parses an HTTP response from a DeleteCredentialWithResponse call
+func ParseDeleteCredentialResponse(rsp *http.Response) (*DeleteCredentialResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteCredentialResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseRenameCredentialResponse parses an HTTP response from a RenameCredentialWithResponse call
+func ParseRenameCredentialResponse(rsp *http.Response) (*RenameCredentialResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RenameCredentialResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Credential
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	}
 
@@ -1444,6 +2914,105 @@ func ParseGetObjectUsedByResponse(rsp *http.Response) (*GetObjectUsedByResponse,
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListTokensResponse parses an HTTP response from a ListTokensWithResponse call
+func ParseListTokensResponse(rsp *http.Response) (*ListTokensResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListTokensResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []TokenMetadata
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateTokenResponse parses an HTTP response from a CreateTokenWithResponse call
+func ParseCreateTokenResponse(rsp *http.Response) (*CreateTokenResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateTokenResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest TokenWithValue
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseRevokeTokenResponse parses an HTTP response from a RevokeTokenWithResponse call
+func ParseRevokeTokenResponse(rsp *http.Response) (*RevokeTokenResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RevokeTokenResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
 
 	}
 
