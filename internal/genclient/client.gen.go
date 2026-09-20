@@ -221,6 +221,9 @@ type TokenMetadata struct {
 	ExpiresAt   time.Time `json:"expires_at"`
 	Id          TokenId   `json:"id"`
 
+	// LastUsedAt Absent if this token has never authenticated a request.
+	LastUsedAt *time.Time `json:"last_used_at,omitempty"`
+
 	// Owner The admin account that created this token over HTTP. Absent
 	// for a token issued via the `token` CLI command, which has no
 	// session to attribute to - never a guessed value.
@@ -234,6 +237,9 @@ type TokenWithValue struct {
 	Description string    `json:"description"`
 	ExpiresAt   time.Time `json:"expires_at"`
 	Id          TokenId   `json:"id"`
+
+	// LastUsedAt Absent if this token has never authenticated a request.
+	LastUsedAt *time.Time `json:"last_used_at,omitempty"`
 
 	// Owner The admin account that created this token over HTTP. Absent
 	// for a token issued via the `token` CLI command, which has no
