@@ -5,18 +5,20 @@
 # oasdiff classifies the spec change as additive or breaking; that
 # classification becomes the commit/PR message's Conventional Commits bump
 # marker (fix: vs fix!: + BREAKING CHANGE:), so release-please computes the
-# right semver bump from a message a human never had to write.
+# right semver bump from a message a human never had to write, and stays
+# visible in the PR body for the real review rules/sdk-generation.md
+# requires before merge. A session-scoped auto-merge grant was previously
+# wired in here as permanent CI behavior — CLAUDE.md's own rule is explicit
+# that a grant doesn't carry forward past the session or PR it was given
+# for, so that step is gone; a regeneration PR waits for an actual merge
+# the same as any other judgment call.
 #
-# No auto-merge step: rules/sdk-generation.md is explicit that a
-# regenerated SDK gets real review, not the standing Renovate/Dependabot
-# self-merge exception — a regeneration can touch every file in the repo,
-# and diff size says nothing about the size of the underlying change. A
-# previous version of this workflow auto-merged every regeneration PR
-# unconditionally, including breaking ones, under a session-scoped
-# auto-merge grant that was never meant to become permanent CI behavior
-# (CLAUDE.md: a grant is scoped to what was said, and doesn't carry
-# forward past its own session). Removed - this job stops at opening the
-# pull request.
+# codegen-auto-merge.yml is that merge, on the account-wide standing
+# exception Ryan granted on 2026-09-11 (rules/sdk-generation.md's
+# "Regeneration in CI" section): once CI is green, this class of PR merges
+# unattended the same way a Renovate/Dependabot/release-please PR already
+# does, since oasdiff already classified the spec diff into the commit
+# type before this job ever runs — matching node/php/python.
 name: codegen
 
 on:
