@@ -103,6 +103,12 @@ type AuditLogEntryAction string
 // never self-reported.
 type AuditLogEntryActorType string
 
+// AuthStatus defines model for AuthStatus.
+type AuthStatus struct {
+	// Bootstrapped Whether an admin account has been created yet.
+	Bootstrapped bool `json:"bootstrapped"`
+}
+
 // CreateObjectRequest defines model for CreateObjectRequest.
 type CreateObjectRequest struct {
 	// Description A free-text label set at creation, for a reader who only knows the
@@ -557,6 +563,9 @@ type ClientInterface interface {
 
 	FinishRegistration(ctx context.Context, body FinishRegistrationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetAuthStatus request
+	GetAuthStatus(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListCredentials request
 	ListCredentials(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -691,6 +700,18 @@ func (c *Client) FinishRegistrationWithBody(ctx context.Context, contentType str
 
 func (c *Client) FinishRegistration(ctx context.Context, body FinishRegistrationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewFinishRegistrationRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetAuthStatus(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetAuthStatusRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -1201,6 +1222,33 @@ func NewFinishRegistrationRequestWithBody(server string, contentType string, bod
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetAuthStatusRequest generates requests for GetAuthStatus
+func NewGetAuthStatusRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/auth/status")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -1894,6 +1942,9 @@ type ClientWithResponsesInterface interface {
 
 	FinishRegistrationWithResponse(ctx context.Context, body FinishRegistrationJSONRequestBody, reqEditors ...RequestEditorFn) (*FinishRegistrationResponse, error)
 
+	// GetAuthStatusWithResponse request
+	GetAuthStatusWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetAuthStatusResponse, error)
+
 	// ListCredentialsWithResponse request
 	ListCredentialsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListCredentialsResponse, error)
 
@@ -2122,6 +2173,36 @@ func (r FinishRegistrationResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r FinishRegistrationResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetAuthStatusResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *AuthStatus
+}
+
+// Status returns HTTPResponse.Status
+func (r GetAuthStatusResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetAuthStatusResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetAuthStatusResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -2603,6 +2684,15 @@ func (c *ClientWithResponses) FinishRegistrationWithResponse(ctx context.Context
 	return ParseFinishRegistrationResponse(rsp)
 }
 
+// GetAuthStatusWithResponse request returning *GetAuthStatusResponse
+func (c *ClientWithResponses) GetAuthStatusWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetAuthStatusResponse, error) {
+	rsp, err := c.GetAuthStatus(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetAuthStatusResponse(rsp)
+}
+
 // ListCredentialsWithResponse request returning *ListCredentialsResponse
 func (c *ClientWithResponses) ListCredentialsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListCredentialsResponse, error) {
 	rsp, err := c.ListCredentials(ctx, reqEditors...)
@@ -2944,6 +3034,32 @@ func ParseFinishRegistrationResponse(rsp *http.Response) (*FinishRegistrationRes
 			return nil, err
 		}
 		response.JSON401 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetAuthStatusResponse parses an HTTP response from a GetAuthStatusWithResponse call
+func ParseGetAuthStatusResponse(rsp *http.Response) (*GetAuthStatusResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetAuthStatusResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AuthStatus
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
 
 	}
 
