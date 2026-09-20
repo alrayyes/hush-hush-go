@@ -566,6 +566,9 @@ type ClientInterface interface {
 	// GetAuthStatus request
 	GetAuthStatus(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// ListConsumers request
+	ListConsumers(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListCredentials request
 	ListCredentials(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -712,6 +715,18 @@ func (c *Client) FinishRegistration(ctx context.Context, body FinishRegistration
 
 func (c *Client) GetAuthStatus(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetAuthStatusRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) ListConsumers(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListConsumersRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -1236,6 +1251,33 @@ func NewGetAuthStatusRequest(server string) (*http.Request, error) {
 	}
 
 	operationPath := fmt.Sprintf("/auth/status")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListConsumersRequest generates requests for ListConsumers
+func NewListConsumersRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/consumers")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1945,6 +1987,9 @@ type ClientWithResponsesInterface interface {
 	// GetAuthStatusWithResponse request
 	GetAuthStatusWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetAuthStatusResponse, error)
 
+	// ListConsumersWithResponse request
+	ListConsumersWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListConsumersResponse, error)
+
 	// ListCredentialsWithResponse request
 	ListCredentialsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListCredentialsResponse, error)
 
@@ -2203,6 +2248,37 @@ func (r GetAuthStatusResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetAuthStatusResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListConsumersResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *[]string
+	JSON401      *Unauthorized
+}
+
+// Status returns HTTPResponse.Status
+func (r ListConsumersResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListConsumersResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListConsumersResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -2693,6 +2769,15 @@ func (c *ClientWithResponses) GetAuthStatusWithResponse(ctx context.Context, req
 	return ParseGetAuthStatusResponse(rsp)
 }
 
+// ListConsumersWithResponse request returning *ListConsumersResponse
+func (c *ClientWithResponses) ListConsumersWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListConsumersResponse, error) {
+	rsp, err := c.ListConsumers(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListConsumersResponse(rsp)
+}
+
 // ListCredentialsWithResponse request returning *ListCredentialsResponse
 func (c *ClientWithResponses) ListCredentialsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListCredentialsResponse, error) {
 	rsp, err := c.ListCredentials(ctx, reqEditors...)
@@ -3060,6 +3145,39 @@ func ParseGetAuthStatusResponse(rsp *http.Response) (*GetAuthStatusResponse, err
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListConsumersResponse parses an HTTP response from a ListConsumersWithResponse call
+func ParseListConsumersResponse(rsp *http.Response) (*ListConsumersResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListConsumersResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []string
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
 
 	}
 
