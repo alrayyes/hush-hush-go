@@ -36,6 +36,13 @@ func TestContract_Health(t *testing.T) {
 	}
 }
 
+func TestContract_AuthStatus(t *testing.T) {
+	client := mustClient(t)
+	if _, err := client.AuthStatus(context.Background()); err != nil {
+		t.Fatalf("AuthStatus: %v", err)
+	}
+}
+
 func TestContract_CreateGetDeleteObject(t *testing.T) {
 	client := mustClient(t)
 	ctx := context.Background()
