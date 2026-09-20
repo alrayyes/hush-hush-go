@@ -81,6 +81,30 @@ func TestClient_GetObject_UnauthenticatedReadSucceeds(t *testing.T) {
 	}
 }
 
+func TestClient_AuthStatus_UnauthenticatedSucceeds(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if auth := r.Header.Get("Authorization"); auth != "" {
+			t.Errorf("unexpected Authorization header on AuthStatus: %q", auth)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(hushhush.AuthStatus{Bootstrapped: true})
+	}))
+	defer srv.Close()
+
+	client, err := hushhush.NewClient(srv.URL) // no credential set at all
+	if err != nil {
+		t.Fatalf("NewClient: %v", err)
+	}
+	status, err := client.AuthStatus(context.Background())
+	if err != nil {
+		t.Fatalf("AuthStatus: %v", err)
+	}
+	if !status.Bootstrapped {
+		t.Errorf("AuthStatus.Bootstrapped = false, want true")
+	}
+}
+
 func TestClient_XCaller_IsPerRequest(t *testing.T) {
 	var gotCaller string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
