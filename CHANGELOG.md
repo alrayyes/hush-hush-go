@@ -1,5 +1,31 @@
 # Changelog
 
+## [2.1.0](https://github.com/alrayyes/hush-hush-go/compare/v2.0.3...v2.1.0) (2026-09-20)
+
+
+### Features
+
+* add AuthStatus() client method for GET /auth/status ([10a8d77](https://github.com/alrayyes/hush-hush-go/commit/10a8d77a385ff872a72edb43993878ed1b214e57))
+* add AuthStatus() client method for GET /auth/status ([b02734e](https://github.com/alrayyes/hush-hush-go/commit/b02734e9fbee184e795cd00c9fc417364bc001df)), closes [#100](https://github.com/alrayyes/hush-hush-go/issues/100)
+
+
+### Bug Fixes
+
+* **ci:** drop the wretry.action wrapper around release-please-action ([fa14e67](https://github.com/alrayyes/hush-hush-go/commit/fa14e67bd4c3b4c73a889cde85b5b15859a85396))
+* **ci:** drop the wretry.action wrapper around release-please-action ([7c8c030](https://github.com/alrayyes/hush-hush-go/commit/7c8c03089be97dca1e896a53c278a8db3281522a)), closes [#103](https://github.com/alrayyes/hush-hush-go/issues/103)
+* **ci:** pin Wandalen/wretry.action to its commit SHA, not the tag SHA ([6b44a41](https://github.com/alrayyes/hush-hush-go/commit/6b44a41dd88982f5ea8c4d8120779fbd115aa927))
+* **ci:** pin Wandalen/wretry.action to its commit SHA, not the tag SHA ([4b4f928](https://github.com/alrayyes/hush-hush-go/commit/4b4f928e069953a9cd6aa422875feb016408455c)), closes [#103](https://github.com/alrayyes/hush-hush-go/issues/103)
+* regenerate client from updated hush-hush spec ([77e7388](https://github.com/alrayyes/hush-hush-go/commit/77e73885a6f93f596b13e5757b6ec7572c9d339d))
+* regenerate client from updated hush-hush spec ([a287212](https://github.com/alrayyes/hush-hush-go/commit/a2872121b34d749c6e3c76451ad570b13ca8959c))
+* regenerate client from updated hush-hush spec ([3fb00a9](https://github.com/alrayyes/hush-hush-go/commit/3fb00a9a1ea830db47071feb42f4d824c0cdb4ee))
+* regenerate client from updated hush-hush spec ([efb198a](https://github.com/alrayyes/hush-hush-go/commit/efb198a7e9eacaaafab48dd639b469e13bfba17c))
+* regenerate client from updated hush-hush spec ([1596c44](https://github.com/alrayyes/hush-hush-go/commit/1596c44777350fe41d587e68c638a6b281ab02fb))
+* regenerate client from updated hush-hush spec ([2158e16](https://github.com/alrayyes/hush-hush-go/commit/2158e16aaff816fc171c2c34445add6ab413aae7))
+* regenerate client from updated hush-hush spec ([2749ec2](https://github.com/alrayyes/hush-hush-go/commit/2749ec2205720648b0c4ea031cf50bdc7eca9a7a))
+* regenerate client from updated hush-hush spec ([9eea46f](https://github.com/alrayyes/hush-hush-go/commit/9eea46f94e14130465c9c1dee013c9574bc6d513))
+* regenerate client from updated hush-hush spec ([1bdc831](https://github.com/alrayyes/hush-hush-go/commit/1bdc8312f7631268e0c0a131b42c5cf6bb2b12a3))
+* regenerate client from updated hush-hush spec ([e00b820](https://github.com/alrayyes/hush-hush-go/commit/e00b820086b662e60d1820670c8ec4ca0988da98))
+
 ## [2.0.3](https://github.com/alrayyes/hush-hush-go/compare/v2.0.2...v2.0.3) (2026-09-19)
 
 
