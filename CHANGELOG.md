@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.1](https://github.com/alrayyes/hush-hush-go/compare/v2.1.0...v2.1.1) (2026-09-20)
+
+
+### Bug Fixes
+
+* **ci:** gate codegen-auto-merge on the breaking-change marker ([#109](https://github.com/alrayyes/hush-hush-go/issues/109)) ([92487aa](https://github.com/alrayyes/hush-hush-go/commit/92487aa915c4262f3b90b7f17438d56c3f97a6b4)), closes [#108](https://github.com/alrayyes/hush-hush-go/issues/108)
+
 ## [2.1.0](https://github.com/alrayyes/hush-hush-go/compare/v2.0.3...v2.1.0) (2026-09-20)
 
 
