@@ -106,6 +106,19 @@ func (c *Client) Health(ctx context.Context) (*Health, error) {
 	return resp.JSON200, nil
 }
 
+// AuthStatus reports whether hush-hush has an admin account bootstrapped
+// yet. Unauthenticated - no credential is required to call it.
+func (c *Client) AuthStatus(ctx context.Context) (*AuthStatus, error) {
+	resp, err := c.api.GetAuthStatusWithResponse(ctx, c.authEditor)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode() != http.StatusOK || resp.JSON200 == nil {
+		return nil, newAPIError(resp.StatusCode(), resp.HTTPResponse.Header, resp.Body)
+	}
+	return resp.JSON200, nil
+}
+
 // CreateObject stores an already-sealed value under a new object id.
 // Requires a credential (see WithAPIKey/HUSH_HUSH_API_KEY). caller, if
 // non-empty, is recorded in the audit log as the X-Caller header.
