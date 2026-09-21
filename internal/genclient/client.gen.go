@@ -131,13 +131,14 @@ type ConsumersPage struct {
 // CreateObjectRequest defines model for CreateObjectRequest.
 type CreateObjectRequest struct {
 	// Description A free-text label set at creation, for a reader who only knows the
-	// id. Fixed at creation - the same as used_by, it is unaffected by a
-	// later value update.
+	// id. Fixed at creation - there is no way to change it later.
 	Description *ObjectDescription `json:"description,omitempty"`
 	Id          ObjectId           `json:"id"`
 
 	// UsedBy The consumers (repos or hosts) recorded as depending on this
-	// object. Set at creation; unaffected by later value updates.
+	// object. Set at creation, and replaceable later via
+	// UpdateObjectRequest's own used_by field - a plain value update
+	// that omits it leaves the list as it was.
 	UsedBy *UsedByList `json:"used_by,omitempty"`
 
 	// Value The sealed (encrypted) value, base64-encoded.
@@ -200,8 +201,7 @@ type LoginFinishRequest struct {
 type LoginOptions map[string]interface{}
 
 // ObjectDescription A free-text label set at creation, for a reader who only knows the
-// id. Fixed at creation - the same as used_by, it is unaffected by a
-// later value update.
+// id. Fixed at creation - there is no way to change it later.
 type ObjectDescription = string
 
 // ObjectId defines model for ObjectId.
@@ -210,13 +210,14 @@ type ObjectId = string
 // ObjectMetadata defines model for ObjectMetadata.
 type ObjectMetadata struct {
 	// Description A free-text label set at creation, for a reader who only knows the
-	// id. Fixed at creation - the same as used_by, it is unaffected by a
-	// later value update.
+	// id. Fixed at creation - there is no way to change it later.
 	Description *ObjectDescription `json:"description,omitempty"`
 	Id          ObjectId           `json:"id"`
 
 	// UsedBy The consumers (repos or hosts) recorded as depending on this
-	// object. Set at creation; unaffected by later value updates.
+	// object. Set at creation, and replaceable later via
+	// UpdateObjectRequest's own used_by field - a plain value update
+	// that omits it leaves the list as it was.
 	UsedBy *UsedByList `json:"used_by,omitempty"`
 }
 
@@ -288,6 +289,12 @@ type TokenWithValue struct {
 
 // UpdateObjectRequest defines model for UpdateObjectRequest.
 type UpdateObjectRequest struct {
+	// UsedBy Replaces the object's recorded used_by list, the same way
+	// CreateObjectRequest's used_by sets it initially - omit this
+	// field entirely to leave the existing list untouched. An
+	// empty array clears it.
+	UsedBy *UsedByList `json:"used_by,omitempty"`
+
 	// Value The new sealed (encrypted) value, base64-encoded.
 	Value []byte `json:"value"`
 }
@@ -295,12 +302,16 @@ type UpdateObjectRequest struct {
 // UsedBy defines model for UsedBy.
 type UsedBy struct {
 	// UsedBy The consumers (repos or hosts) recorded as depending on this
-	// object. Set at creation; unaffected by later value updates.
+	// object. Set at creation, and replaceable later via
+	// UpdateObjectRequest's own used_by field - a plain value update
+	// that omits it leaves the list as it was.
 	UsedBy UsedByList `json:"used_by"`
 }
 
 // UsedByList The consumers (repos or hosts) recorded as depending on this
-// object. Set at creation; unaffected by later value updates.
+// object. Set at creation, and replaceable later via
+// UpdateObjectRequest's own used_by field - a plain value update
+// that omits it leaves the list as it was.
 type UsedByList = []string
 
 // Caller defines model for caller.
