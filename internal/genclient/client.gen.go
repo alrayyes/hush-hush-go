@@ -236,6 +236,14 @@ type RegistrationFinishRequest struct {
 // specification rather than reproduced here field by field.
 type RegistrationOptions map[string]interface{}
 
+// RenameConsumerRequest defines model for RenameConsumerRequest.
+type RenameConsumerRequest struct {
+	// Name The consumer's new name. If it already matches another
+	// recorded consumer, the two merge - every object recording
+	// either ends up recording just the new name, no duplicates.
+	Name string `json:"name"`
+}
+
 // TokenId defines model for TokenId.
 type TokenId = string
 
@@ -298,6 +306,9 @@ type UsedByList = []string
 // Caller defines model for caller.
 type Caller = string
 
+// ConsumerName defines model for consumerName.
+type ConsumerName = string
+
 // CsrfToken defines model for csrfToken.
 type CsrfToken = string
 
@@ -315,6 +326,9 @@ type NotFound = Error
 
 // Unauthorized defines model for Unauthorized.
 type Unauthorized = Error
+
+// UnknownConsumer defines model for UnknownConsumer.
+type UnknownConsumer = Error
 
 // bearerAuthContextKey is the context key for bearerAuth security scheme
 type bearerAuthContextKey string
@@ -380,6 +394,26 @@ type ListConsumers200JSONResponseBody0 = []string
 // ListConsumers200JSONResponseBody defines parameters for ListConsumers.
 type ListConsumers200JSONResponseBody struct {
 	union json.RawMessage
+}
+
+// DeleteConsumerParams defines parameters for DeleteConsumer.
+type DeleteConsumerParams struct {
+	// XCSRFToken The current session's own CSRF token - required when the request
+	// is authenticated by a session, not present or checked when it's
+	// authenticated by a bearer token instead (which has no session, and
+	// so no CSRF token to send). See `csrfToken` for the always-required
+	// form used where session auth is the only option.
+	XCSRFToken *CsrfTokenOptional `json:"X-CSRF-Token,omitempty"`
+}
+
+// RenameConsumerParams defines parameters for RenameConsumer.
+type RenameConsumerParams struct {
+	// XCSRFToken The current session's own CSRF token - required when the request
+	// is authenticated by a session, not present or checked when it's
+	// authenticated by a bearer token instead (which has no session, and
+	// so no CSRF token to send). See `csrfToken` for the always-required
+	// form used where session auth is the only option.
+	XCSRFToken *CsrfTokenOptional `json:"X-CSRF-Token,omitempty"`
 }
 
 // DeleteCredentialParams defines parameters for DeleteCredential.
@@ -494,6 +528,9 @@ type FinishLoginJSONRequestBody = LoginFinishRequest
 
 // FinishRegistrationJSONRequestBody defines body for FinishRegistration for application/json ContentType.
 type FinishRegistrationJSONRequestBody = RegistrationFinishRequest
+
+// RenameConsumerJSONRequestBody defines body for RenameConsumer for application/json ContentType.
+type RenameConsumerJSONRequestBody = RenameConsumerRequest
 
 // RenameCredentialJSONRequestBody defines body for RenameCredential for application/json ContentType.
 type RenameCredentialJSONRequestBody = CredentialRenameRequest
@@ -670,6 +707,14 @@ type ClientInterface interface {
 	// ListConsumers request
 	ListConsumers(ctx context.Context, params *ListConsumersParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// DeleteConsumer request
+	DeleteConsumer(ctx context.Context, name ConsumerName, params *DeleteConsumerParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RenameConsumerWithBody request with any body
+	RenameConsumerWithBody(ctx context.Context, name ConsumerName, params *RenameConsumerParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	RenameConsumer(ctx context.Context, name ConsumerName, params *RenameConsumerParams, body RenameConsumerJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListCredentials request
 	ListCredentials(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -828,6 +873,42 @@ func (c *Client) GetAuthStatus(ctx context.Context, reqEditors ...RequestEditorF
 
 func (c *Client) ListConsumers(ctx context.Context, params *ListConsumersParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewListConsumersRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) DeleteConsumer(ctx context.Context, name ConsumerName, params *DeleteConsumerParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteConsumerRequest(c.Server, name, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) RenameConsumerWithBody(ctx context.Context, name ConsumerName, params *RenameConsumerParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRenameConsumerRequestWithBody(c.Server, name, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) RenameConsumer(ctx context.Context, name ConsumerName, params *RenameConsumerParams, body RenameConsumerJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRenameConsumerRequest(c.Server, name, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1442,6 +1523,117 @@ func NewListConsumersRequest(server string, params *ListConsumersParams) (*http.
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
 	if err != nil {
 		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewDeleteConsumerRequest generates requests for DeleteConsumer
+func NewDeleteConsumerRequest(server string, name ConsumerName, params *DeleteConsumerParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "name", name, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/consumers/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		if params.XCSRFToken != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "X-CSRF-Token", *params.XCSRFToken, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("X-CSRF-Token", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewRenameConsumerRequest calls the generic RenameConsumer builder with application/json body
+func NewRenameConsumerRequest(server string, name ConsumerName, params *RenameConsumerParams, body RenameConsumerJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewRenameConsumerRequestWithBody(server, name, params, "application/json", bodyReader)
+}
+
+// NewRenameConsumerRequestWithBody generates requests for RenameConsumer with any type of body
+func NewRenameConsumerRequestWithBody(server string, name ConsumerName, params *RenameConsumerParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "name", name, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/consumers/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.XCSRFToken != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "X-CSRF-Token", *params.XCSRFToken, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("X-CSRF-Token", headerParam0)
+		}
+
 	}
 
 	return req, nil
@@ -2142,6 +2334,14 @@ type ClientWithResponsesInterface interface {
 	// ListConsumersWithResponse request
 	ListConsumersWithResponse(ctx context.Context, params *ListConsumersParams, reqEditors ...RequestEditorFn) (*ListConsumersResponse, error)
 
+	// DeleteConsumerWithResponse request
+	DeleteConsumerWithResponse(ctx context.Context, name ConsumerName, params *DeleteConsumerParams, reqEditors ...RequestEditorFn) (*DeleteConsumerResponse, error)
+
+	// RenameConsumerWithBodyWithResponse request with any body
+	RenameConsumerWithBodyWithResponse(ctx context.Context, name ConsumerName, params *RenameConsumerParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RenameConsumerResponse, error)
+
+	RenameConsumerWithResponse(ctx context.Context, name ConsumerName, params *RenameConsumerParams, body RenameConsumerJSONRequestBody, reqEditors ...RequestEditorFn) (*RenameConsumerResponse, error)
+
 	// ListCredentialsWithResponse request
 	ListCredentialsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListCredentialsResponse, error)
 
@@ -2432,6 +2632,70 @@ func (r ListConsumersResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r ListConsumersResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteConsumerResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON401      *Unauthorized
+	JSON404      *UnknownConsumer
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteConsumerResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteConsumerResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteConsumerResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type RenameConsumerResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ConsumerEntry
+	JSON400      *BadRequest
+	JSON401      *Unauthorized
+	JSON404      *UnknownConsumer
+}
+
+// Status returns HTTPResponse.Status
+func (r RenameConsumerResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RenameConsumerResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RenameConsumerResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -2931,6 +3195,32 @@ func (c *ClientWithResponses) ListConsumersWithResponse(ctx context.Context, par
 	return ParseListConsumersResponse(rsp)
 }
 
+// DeleteConsumerWithResponse request returning *DeleteConsumerResponse
+func (c *ClientWithResponses) DeleteConsumerWithResponse(ctx context.Context, name ConsumerName, params *DeleteConsumerParams, reqEditors ...RequestEditorFn) (*DeleteConsumerResponse, error) {
+	rsp, err := c.DeleteConsumer(ctx, name, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteConsumerResponse(rsp)
+}
+
+// RenameConsumerWithBodyWithResponse request with arbitrary body returning *RenameConsumerResponse
+func (c *ClientWithResponses) RenameConsumerWithBodyWithResponse(ctx context.Context, name ConsumerName, params *RenameConsumerParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RenameConsumerResponse, error) {
+	rsp, err := c.RenameConsumerWithBody(ctx, name, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRenameConsumerResponse(rsp)
+}
+
+func (c *ClientWithResponses) RenameConsumerWithResponse(ctx context.Context, name ConsumerName, params *RenameConsumerParams, body RenameConsumerJSONRequestBody, reqEditors ...RequestEditorFn) (*RenameConsumerResponse, error) {
+	rsp, err := c.RenameConsumer(ctx, name, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRenameConsumerResponse(rsp)
+}
+
 // ListCredentialsWithResponse request returning *ListCredentialsResponse
 func (c *ClientWithResponses) ListCredentialsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListCredentialsResponse, error) {
 	rsp, err := c.ListCredentials(ctx, reqEditors...)
@@ -3338,6 +3628,86 @@ func ParseListConsumersResponse(rsp *http.Response) (*ListConsumersResponse, err
 			return nil, err
 		}
 		response.JSON401 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteConsumerResponse parses an HTTP response from a DeleteConsumerWithResponse call
+func ParseDeleteConsumerResponse(rsp *http.Response) (*DeleteConsumerResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteConsumerResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest UnknownConsumer
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseRenameConsumerResponse parses an HTTP response from a RenameConsumerWithResponse call
+func ParseRenameConsumerResponse(rsp *http.Response) (*RenameConsumerResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RenameConsumerResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ConsumerEntry
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest UnknownConsumer
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	}
 
