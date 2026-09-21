@@ -109,6 +109,25 @@ type AuthStatus struct {
 	Bootstrapped bool `json:"bootstrapped"`
 }
 
+// ConsumerEntry defines model for ConsumerEntry.
+type ConsumerEntry struct {
+	// Name A distinct consumer name recorded in some object's used_by list.
+	Name string `json:"name"`
+
+	// SecretCount How many stored secret objects' used_by list includes this consumer.
+	SecretCount int32 `json:"secret_count"`
+}
+
+// ConsumersPage defines model for ConsumersPage.
+type ConsumersPage struct {
+	Consumers []ConsumerEntry `json:"consumers"`
+
+	// Total The total number of consumers matching the request's filter,
+	// across every page - not just this page's own count - so a
+	// caller can render page-number navigation.
+	Total int32 `json:"total"`
+}
+
 // CreateObjectRequest defines model for CreateObjectRequest.
 type CreateObjectRequest struct {
 	// Description A free-text label set at creation, for a reader who only knows the
@@ -343,6 +362,26 @@ type LogoutParams struct {
 	XCSRFToken CsrfToken `json:"X-CSRF-Token"`
 }
 
+// ListConsumersParams defines parameters for ListConsumers.
+type ListConsumersParams struct {
+	// Q Restrict to consumers whose name contains this substring, case-insensitive.
+	Q *string `form:"q,omitempty" json:"q,omitempty"`
+
+	// Page 1-based page number. Given alone or with the other two, triggers the paginated response shape.
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
+
+	// PageSize Maximum consumers per page. Defaults to 20, capped at 100.
+	PageSize *int32 `form:"page_size,omitempty" json:"page_size,omitempty"`
+}
+
+// ListConsumers200JSONResponseBody0 defines parameters for ListConsumers.
+type ListConsumers200JSONResponseBody0 = []string
+
+// ListConsumers200JSONResponseBody defines parameters for ListConsumers.
+type ListConsumers200JSONResponseBody struct {
+	union json.RawMessage
+}
+
 // DeleteCredentialParams defines parameters for DeleteCredential.
 type DeleteCredentialParams struct {
 	// XCSRFToken The current session's own CSRF token - required on every
@@ -468,6 +507,68 @@ type UpdateObjectJSONRequestBody = UpdateObjectRequest
 // CreateTokenJSONRequestBody defines body for CreateToken for application/json ContentType.
 type CreateTokenJSONRequestBody = CreateTokenRequest
 
+// AsListConsumers200JSONResponseBody0 returns the union data inside the ListConsumers200JSONResponseBody as a ListConsumers200JSONResponseBody0
+func (t ListConsumers200JSONResponseBody) AsListConsumers200JSONResponseBody0() (ListConsumers200JSONResponseBody0, error) {
+	var body ListConsumers200JSONResponseBody0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromListConsumers200JSONResponseBody0 overwrites any union data inside the ListConsumers200JSONResponseBody as the provided ListConsumers200JSONResponseBody0
+func (t *ListConsumers200JSONResponseBody) FromListConsumers200JSONResponseBody0(v ListConsumers200JSONResponseBody0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeListConsumers200JSONResponseBody0 performs a merge with any union data inside the ListConsumers200JSONResponseBody, using the provided ListConsumers200JSONResponseBody0
+func (t *ListConsumers200JSONResponseBody) MergeListConsumers200JSONResponseBody0(v ListConsumers200JSONResponseBody0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsConsumersPage returns the union data inside the ListConsumers200JSONResponseBody as a ConsumersPage
+func (t ListConsumers200JSONResponseBody) AsConsumersPage() (ConsumersPage, error) {
+	var body ConsumersPage
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromConsumersPage overwrites any union data inside the ListConsumers200JSONResponseBody as the provided ConsumersPage
+func (t *ListConsumers200JSONResponseBody) FromConsumersPage(v ConsumersPage) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeConsumersPage performs a merge with any union data inside the ListConsumers200JSONResponseBody, using the provided ConsumersPage
+func (t *ListConsumers200JSONResponseBody) MergeConsumersPage(v ConsumersPage) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t ListConsumers200JSONResponseBody) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *ListConsumers200JSONResponseBody) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
 // RequestEditorFn  is the function signature for the RequestEditor callback function
 type RequestEditorFn func(ctx context.Context, req *http.Request) error
 
@@ -567,7 +668,7 @@ type ClientInterface interface {
 	GetAuthStatus(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListConsumers request
-	ListConsumers(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListConsumers(ctx context.Context, params *ListConsumersParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListCredentials request
 	ListCredentials(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -725,8 +826,8 @@ func (c *Client) GetAuthStatus(ctx context.Context, reqEditors ...RequestEditorF
 	return c.Client.Do(req)
 }
 
-func (c *Client) ListConsumers(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewListConsumersRequest(c.Server)
+func (c *Client) ListConsumers(ctx context.Context, params *ListConsumersParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListConsumersRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -1269,7 +1370,7 @@ func NewGetAuthStatusRequest(server string) (*http.Request, error) {
 }
 
 // NewListConsumersRequest generates requests for ListConsumers
-func NewListConsumersRequest(server string) (*http.Request, error) {
+func NewListConsumersRequest(server string, params *ListConsumersParams) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -1285,6 +1386,57 @@ func NewListConsumersRequest(server string) (*http.Request, error) {
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Q != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "q", *params.Q, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "page", *params.Page, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: "int32"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.PageSize != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "page_size", *params.PageSize, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: "int32"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
@@ -1988,7 +2140,7 @@ type ClientWithResponsesInterface interface {
 	GetAuthStatusWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetAuthStatusResponse, error)
 
 	// ListConsumersWithResponse request
-	ListConsumersWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListConsumersResponse, error)
+	ListConsumersWithResponse(ctx context.Context, params *ListConsumersParams, reqEditors ...RequestEditorFn) (*ListConsumersResponse, error)
 
 	// ListCredentialsWithResponse request
 	ListCredentialsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListCredentialsResponse, error)
@@ -2257,7 +2409,8 @@ func (r GetAuthStatusResponse) ContentType() string {
 type ListConsumersResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *[]string
+	JSON200      *ListConsumers200JSONResponseBody
+	JSON400      *BadRequest
 	JSON401      *Unauthorized
 }
 
@@ -2770,8 +2923,8 @@ func (c *ClientWithResponses) GetAuthStatusWithResponse(ctx context.Context, req
 }
 
 // ListConsumersWithResponse request returning *ListConsumersResponse
-func (c *ClientWithResponses) ListConsumersWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListConsumersResponse, error) {
-	rsp, err := c.ListConsumers(ctx, reqEditors...)
+func (c *ClientWithResponses) ListConsumersWithResponse(ctx context.Context, params *ListConsumersParams, reqEditors ...RequestEditorFn) (*ListConsumersResponse, error) {
+	rsp, err := c.ListConsumers(ctx, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -3166,11 +3319,18 @@ func ParseListConsumersResponse(rsp *http.Response) (*ListConsumersResponse, err
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest []string
+		var dest ListConsumers200JSONResponseBody
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest Unauthorized
