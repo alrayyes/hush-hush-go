@@ -1,5 +1,17 @@
 # Changelog
 
+## [3.0.0](https://github.com/alrayyes/hush-hush-go/compare/v2.1.4...v3.0.0) (2026-09-21)
+
+
+### ⚠ BREAKING CHANGES
+
+* regenerate client from updated hush-hush spec ([#120](https://github.com/alrayyes/hush-hush-go/issues/120))
+
+### Bug Fixes
+
+* **deps:** bump github.com/pact-foundation/pact-go/v2 ([#117](https://github.com/alrayyes/hush-hush-go/issues/117)) ([6b82423](https://github.com/alrayyes/hush-hush-go/commit/6b8242385b83aa2a00878c6325b90b08de87b922))
+* regenerate client from updated hush-hush spec ([#120](https://github.com/alrayyes/hush-hush-go/issues/120)) ([d9f8f55](https://github.com/alrayyes/hush-hush-go/commit/d9f8f558c11110d3d543f05d62fe7d3d5eb36681))
+
 ## [2.1.4](https://github.com/alrayyes/hush-hush-go/compare/v2.1.3...v2.1.4) (2026-09-20)
 
 
