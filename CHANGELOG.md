@@ -1,5 +1,14 @@
 # Changelog
 
+## [3.0.4](https://github.com/alrayyes/hush-hush-go/compare/v3.0.3...v3.0.4) (2026-09-21)
+
+
+### Bug Fixes
+
+* regenerate client from updated hush-hush spec ([bfe5048](https://github.com/alrayyes/hush-hush-go/commit/bfe5048a958a265f311140081d8d16efa3698fbe))
+* regenerate client from updated hush-hush spec ([f076d9b](https://github.com/alrayyes/hush-hush-go/commit/f076d9b4d55fe2a4fbd4c51a28bbd72915536756))
+* regenerate client from updated hush-hush spec ([#130](https://github.com/alrayyes/hush-hush-go/issues/130)) ([78b3837](https://github.com/alrayyes/hush-hush-go/commit/78b38378449978c19b699f2e8fd70fd5ccfb3d88))
+
 ## [3.0.3](https://github.com/alrayyes/hush-hush-go/compare/v3.0.2...v3.0.3) (2026-09-21)
 
 
