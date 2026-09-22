@@ -64,6 +64,21 @@ func (e AuditLogEntryActorType) Valid() bool {
 	}
 }
 
+// AddConsumerRequest defines model for AddConsumerRequest.
+type AddConsumerRequest struct {
+	// Name The consumer's name. Rejected if it already appears in the directory.
+	Name string `json:"name"`
+}
+
+// AuditActorOption defines model for AuditActorOption.
+type AuditActorOption struct {
+	// Label What to show the user - "admin", "token:<id>", or "none".
+	Label string `json:"label"`
+
+	// Value What to send back as the `actor` query parameter to select this actor.
+	Value string `json:"value"`
+}
+
 // AuditLogEntry defines model for AuditLogEntry.
 type AuditLogEntry struct {
 	Action AuditLogEntryAction `json:"action"`
@@ -102,6 +117,18 @@ type AuditLogEntryAction string
 // absent for an unauthenticated read. Unlike caller, this is
 // never self-reported.
 type AuditLogEntryActorType string
+
+// AuditLogFilterOptions defines model for AuditLogFilterOptions.
+type AuditLogFilterOptions struct {
+	// Actors Every distinct actor currently recorded in the audit log.
+	Actors []AuditActorOption `json:"actors"`
+
+	// Callers Every distinct caller currently recorded in the audit log.
+	Callers []string `json:"callers"`
+
+	// ObjectIds Every distinct object id currently recorded in the audit log.
+	ObjectIds []ObjectId `json:"object_ids"`
+}
 
 // AuthStatus defines model for AuthStatus.
 type AuthStatus struct {
@@ -332,6 +359,9 @@ type Id = ObjectId
 // BadRequest defines model for BadRequest.
 type BadRequest = Error
 
+// ConsumerAlreadyExists defines model for ConsumerAlreadyExists.
+type ConsumerAlreadyExists = Error
+
 // NotFound defines model for NotFound.
 type NotFound = Error
 
@@ -357,7 +387,11 @@ type QueryAuditLogParams struct {
 
 	// Actor Restrict to entries authenticated by this verified actor - a
 	// token id, or the admin account's own actor_id. Unlike caller,
-	// this is never self-reported.
+	// this is never self-reported. The literal value `none` is a
+	// sentinel matching an unauthenticated read (no real actor_id
+	// ever takes that value) - `GET /audit-log/filter-options`
+	// returns it as one of the actor filter's own selectable
+	// values, alongside every real actor.
 	Actor *string `form:"actor,omitempty" json:"actor,omitempty"`
 
 	// From Restrict to entries at or after this time.
@@ -405,6 +439,16 @@ type ListConsumers200JSONResponseBody0 = []string
 // ListConsumers200JSONResponseBody defines parameters for ListConsumers.
 type ListConsumers200JSONResponseBody struct {
 	union json.RawMessage
+}
+
+// AddConsumerParams defines parameters for AddConsumer.
+type AddConsumerParams struct {
+	// XCSRFToken The current session's own CSRF token - required when the request
+	// is authenticated by a session, not present or checked when it's
+	// authenticated by a bearer token instead (which has no session, and
+	// so no CSRF token to send). See `csrfToken` for the always-required
+	// form used where session auth is the only option.
+	XCSRFToken *CsrfTokenOptional `json:"X-CSRF-Token,omitempty"`
 }
 
 // DeleteConsumerParams defines parameters for DeleteConsumer.
@@ -539,6 +583,9 @@ type FinishLoginJSONRequestBody = LoginFinishRequest
 
 // FinishRegistrationJSONRequestBody defines body for FinishRegistration for application/json ContentType.
 type FinishRegistrationJSONRequestBody = RegistrationFinishRequest
+
+// AddConsumerJSONRequestBody defines body for AddConsumer for application/json ContentType.
+type AddConsumerJSONRequestBody = AddConsumerRequest
 
 // RenameConsumerJSONRequestBody defines body for RenameConsumer for application/json ContentType.
 type RenameConsumerJSONRequestBody = RenameConsumerRequest
@@ -693,6 +740,9 @@ type ClientInterface interface {
 	// QueryAuditLog request
 	QueryAuditLog(ctx context.Context, params *QueryAuditLogParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// QueryAuditLogFilterOptions request
+	QueryAuditLogFilterOptions(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// BeginLogin request
 	BeginLogin(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -717,6 +767,11 @@ type ClientInterface interface {
 
 	// ListConsumers request
 	ListConsumers(ctx context.Context, params *ListConsumersParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AddConsumerWithBody request with any body
+	AddConsumerWithBody(ctx context.Context, params *AddConsumerParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	AddConsumer(ctx context.Context, params *AddConsumerParams, body AddConsumerJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteConsumer request
 	DeleteConsumer(ctx context.Context, name ConsumerName, params *DeleteConsumerParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -776,6 +831,18 @@ type ClientInterface interface {
 
 func (c *Client) QueryAuditLog(ctx context.Context, params *QueryAuditLogParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewQueryAuditLogRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) QueryAuditLogFilterOptions(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewQueryAuditLogFilterOptionsRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -884,6 +951,30 @@ func (c *Client) GetAuthStatus(ctx context.Context, reqEditors ...RequestEditorF
 
 func (c *Client) ListConsumers(ctx context.Context, params *ListConsumersParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewListConsumersRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) AddConsumerWithBody(ctx context.Context, params *AddConsumerParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAddConsumerRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) AddConsumer(ctx context.Context, params *AddConsumerParams, body AddConsumerJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAddConsumerRequest(c.Server, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1260,6 +1351,33 @@ func NewQueryAuditLogRequest(server string, params *QueryAuditLogParams) (*http.
 	return req, nil
 }
 
+// NewQueryAuditLogFilterOptionsRequest generates requests for QueryAuditLogFilterOptions
+func NewQueryAuditLogFilterOptionsRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/audit-log/filter-options")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewBeginLoginRequest generates requests for BeginLogin
 func NewBeginLoginRequest(server string) (*http.Request, error) {
 	var err error
@@ -1534,6 +1652,61 @@ func NewListConsumersRequest(server string, params *ListConsumersParams) (*http.
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
 	if err != nil {
 		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewAddConsumerRequest calls the generic AddConsumer builder with application/json body
+func NewAddConsumerRequest(server string, params *AddConsumerParams, body AddConsumerJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAddConsumerRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewAddConsumerRequestWithBody generates requests for AddConsumer with any type of body
+func NewAddConsumerRequestWithBody(server string, params *AddConsumerParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/consumers")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.XCSRFToken != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "X-CSRF-Token", *params.XCSRFToken, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("X-CSRF-Token", headerParam0)
+		}
+
 	}
 
 	return req, nil
@@ -2320,6 +2493,9 @@ type ClientWithResponsesInterface interface {
 	// QueryAuditLogWithResponse request
 	QueryAuditLogWithResponse(ctx context.Context, params *QueryAuditLogParams, reqEditors ...RequestEditorFn) (*QueryAuditLogResponse, error)
 
+	// QueryAuditLogFilterOptionsWithResponse request
+	QueryAuditLogFilterOptionsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*QueryAuditLogFilterOptionsResponse, error)
+
 	// BeginLoginWithResponse request
 	BeginLoginWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*BeginLoginResponse, error)
 
@@ -2344,6 +2520,11 @@ type ClientWithResponsesInterface interface {
 
 	// ListConsumersWithResponse request
 	ListConsumersWithResponse(ctx context.Context, params *ListConsumersParams, reqEditors ...RequestEditorFn) (*ListConsumersResponse, error)
+
+	// AddConsumerWithBodyWithResponse request with any body
+	AddConsumerWithBodyWithResponse(ctx context.Context, params *AddConsumerParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddConsumerResponse, error)
+
+	AddConsumerWithResponse(ctx context.Context, params *AddConsumerParams, body AddConsumerJSONRequestBody, reqEditors ...RequestEditorFn) (*AddConsumerResponse, error)
 
 	// DeleteConsumerWithResponse request
 	DeleteConsumerWithResponse(ctx context.Context, name ConsumerName, params *DeleteConsumerParams, reqEditors ...RequestEditorFn) (*DeleteConsumerResponse, error)
@@ -2426,6 +2607,36 @@ func (r QueryAuditLogResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r QueryAuditLogResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type QueryAuditLogFilterOptionsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *AuditLogFilterOptions
+}
+
+// Status returns HTTPResponse.Status
+func (r QueryAuditLogFilterOptionsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r QueryAuditLogFilterOptionsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r QueryAuditLogFilterOptionsResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -2643,6 +2854,39 @@ func (r ListConsumersResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r ListConsumersResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type AddConsumerResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *ConsumerEntry
+	JSON400      *BadRequest
+	JSON401      *Unauthorized
+	JSON409      *ConsumerAlreadyExists
+}
+
+// Status returns HTTPResponse.Status
+func (r AddConsumerResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AddConsumerResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AddConsumerResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -3127,6 +3371,15 @@ func (c *ClientWithResponses) QueryAuditLogWithResponse(ctx context.Context, par
 	return ParseQueryAuditLogResponse(rsp)
 }
 
+// QueryAuditLogFilterOptionsWithResponse request returning *QueryAuditLogFilterOptionsResponse
+func (c *ClientWithResponses) QueryAuditLogFilterOptionsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*QueryAuditLogFilterOptionsResponse, error) {
+	rsp, err := c.QueryAuditLogFilterOptions(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseQueryAuditLogFilterOptionsResponse(rsp)
+}
+
 // BeginLoginWithResponse request returning *BeginLoginResponse
 func (c *ClientWithResponses) BeginLoginWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*BeginLoginResponse, error) {
 	rsp, err := c.BeginLogin(ctx, reqEditors...)
@@ -3204,6 +3457,23 @@ func (c *ClientWithResponses) ListConsumersWithResponse(ctx context.Context, par
 		return nil, err
 	}
 	return ParseListConsumersResponse(rsp)
+}
+
+// AddConsumerWithBodyWithResponse request with arbitrary body returning *AddConsumerResponse
+func (c *ClientWithResponses) AddConsumerWithBodyWithResponse(ctx context.Context, params *AddConsumerParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddConsumerResponse, error) {
+	rsp, err := c.AddConsumerWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAddConsumerResponse(rsp)
+}
+
+func (c *ClientWithResponses) AddConsumerWithResponse(ctx context.Context, params *AddConsumerParams, body AddConsumerJSONRequestBody, reqEditors ...RequestEditorFn) (*AddConsumerResponse, error) {
+	rsp, err := c.AddConsumer(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAddConsumerResponse(rsp)
 }
 
 // DeleteConsumerWithResponse request returning *DeleteConsumerResponse
@@ -3408,6 +3678,32 @@ func ParseQueryAuditLogResponse(rsp *http.Response) (*QueryAuditLogResponse, err
 			return nil, err
 		}
 		response.JSON400 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseQueryAuditLogFilterOptionsResponse parses an HTTP response from a QueryAuditLogFilterOptionsWithResponse call
+func ParseQueryAuditLogFilterOptionsResponse(rsp *http.Response) (*QueryAuditLogFilterOptionsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &QueryAuditLogFilterOptionsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AuditLogFilterOptions
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
 
 	}
 
@@ -3639,6 +3935,53 @@ func ParseListConsumersResponse(rsp *http.Response) (*ListConsumersResponse, err
 			return nil, err
 		}
 		response.JSON401 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseAddConsumerResponse parses an HTTP response from a AddConsumerWithResponse call
+func ParseAddConsumerResponse(rsp *http.Response) (*AddConsumerResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AddConsumerResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest ConsumerEntry
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest ConsumerAlreadyExists
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
 
 	}
 
