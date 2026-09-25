@@ -491,6 +491,9 @@ type RenameCredentialParams struct {
 	XCSRFToken CsrfToken `json:"X-CSRF-Token"`
 }
 
+// McpJSONBody defines parameters for Mcp.
+type McpJSONBody = map[string]interface{}
+
 // ListObjectsParams defines parameters for ListObjects.
 type ListObjectsParams struct {
 	// UsedBy Restrict to objects whose recorded used_by lineage includes this consumer.
@@ -592,6 +595,9 @@ type RenameConsumerJSONRequestBody = RenameConsumerRequest
 
 // RenameCredentialJSONRequestBody defines body for RenameCredential for application/json ContentType.
 type RenameCredentialJSONRequestBody = CredentialRenameRequest
+
+// McpJSONRequestBody defines body for Mcp for application/json ContentType.
+type McpJSONRequestBody = McpJSONBody
 
 // CreateObjectJSONRequestBody defines body for CreateObject for application/json ContentType.
 type CreateObjectJSONRequestBody = CreateObjectRequest
@@ -794,6 +800,11 @@ type ClientInterface interface {
 
 	// Health request
 	Health(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// McpWithBody request with any body
+	McpWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	Mcp(ctx context.Context, body McpJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListObjects request
 	ListObjects(ctx context.Context, params *ListObjectsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1071,6 +1082,30 @@ func (c *Client) RenameCredential(ctx context.Context, id CredentialId, params *
 
 func (c *Client) Health(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewHealthRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) McpWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewMcpRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) Mcp(ctx context.Context, body McpJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewMcpRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1984,6 +2019,46 @@ func NewHealthRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
+// NewMcpRequest calls the generic Mcp builder with application/json body
+func NewMcpRequest(server string, body McpJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewMcpRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewMcpRequestWithBody generates requests for Mcp with any type of body
+func NewMcpRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/mcp")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewListObjectsRequest generates requests for ListObjects
 func NewListObjectsRequest(server string, params *ListObjectsParams) (*http.Request, error) {
 	var err error
@@ -2548,6 +2623,11 @@ type ClientWithResponsesInterface interface {
 	// HealthWithResponse request
 	HealthWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*HealthResponse, error)
 
+	// McpWithBodyWithResponse request with any body
+	McpWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*McpResponse, error)
+
+	McpWithResponse(ctx context.Context, body McpJSONRequestBody, reqEditors ...RequestEditorFn) (*McpResponse, error)
+
 	// ListObjectsWithResponse request
 	ListObjectsWithResponse(ctx context.Context, params *ListObjectsParams, reqEditors ...RequestEditorFn) (*ListObjectsResponse, error)
 
@@ -3082,6 +3162,37 @@ func (r HealthResponse) ContentType() string {
 	return ""
 }
 
+type McpResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *map[string]interface{}
+	JSON401      *Unauthorized
+}
+
+// Status returns HTTPResponse.Status
+func (r McpResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r McpResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r McpResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListObjectsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -3544,6 +3655,23 @@ func (c *ClientWithResponses) HealthWithResponse(ctx context.Context, reqEditors
 		return nil, err
 	}
 	return ParseHealthResponse(rsp)
+}
+
+// McpWithBodyWithResponse request with arbitrary body returning *McpResponse
+func (c *ClientWithResponses) McpWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*McpResponse, error) {
+	rsp, err := c.McpWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseMcpResponse(rsp)
+}
+
+func (c *ClientWithResponses) McpWithResponse(ctx context.Context, body McpJSONRequestBody, reqEditors ...RequestEditorFn) (*McpResponse, error) {
+	rsp, err := c.Mcp(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseMcpResponse(rsp)
 }
 
 // ListObjectsWithResponse request returning *ListObjectsResponse
@@ -4201,6 +4329,42 @@ func ParseHealthResponse(rsp *http.Response) (*HealthResponse, error) {
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseMcpResponse parses an HTTP response from a McpWithResponse call
+func ParseMcpResponse(rsp *http.Response) (*McpResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &McpResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest map[string]interface{}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case rsp.StatusCode == 200:
+		// Content-type (text/event-stream) unsupported
 
 	}
 
