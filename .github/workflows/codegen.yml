@@ -19,11 +19,13 @@
 # unattended the same way a Renovate/Dependabot/release-please PR already
 # does, since oasdiff already classified the spec diff into the commit
 # type before this job ever runs — matching node/php/python.
+#
+# No cron: Hush-Hush's release.yml fires repository_dispatch
+# (spec-updated) on every release, so a schedule fallback only added
+# noise once that path was proven working (alrayyes/Hush-Hush#224).
 name: codegen
 
 on:
-  schedule:
-    - cron: "0 6 * * *" # daily, 06:00 UTC
   workflow_dispatch:
   repository_dispatch:
     types: [spec-updated]
