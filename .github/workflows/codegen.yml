@@ -14,11 +14,18 @@
 # the same as any other judgment call.
 #
 # codegen-auto-merge.yml is that merge, on the account-wide standing
-# exception Ryan granted on 2026-09-11 (rules/sdk-generation.md's
-# "Regeneration in CI" section): once CI is green, this class of PR merges
-# unattended the same way a Renovate/Dependabot/release-please PR already
-# does, since oasdiff already classified the spec diff into the commit
-# type before this job ever runs — matching node/php/python.
+# exception Ryan granted (rules/sdk-generation.md's "Regeneration in CI"
+# section): once CI is green, this class of PR merges unattended the same
+# way a Renovate/Dependabot/release-please PR already does, since oasdiff
+# already classified the spec diff into the commit type before this job
+# ever runs — matching node/php/python.
+#
+# "Check whether the spec actually moved" below diffs api/openapi.yaml's
+# own content, not the submodule pointer: the pointer advances on every
+# commit to hush-hush's main, most of which never touch the spec, and a
+# no-op regeneration (a diff of nothing but the embedded spec-commit
+# comment) would otherwise still open a PR, auto-merge, and cut a release
+# nobody asked for — confirmed live on alrayyes/hush-hush-node#153.
 #
 # No cron: Hush-Hush's release.yml fires repository_dispatch
 # (spec-updated) on every release, so a schedule fallback only added
@@ -54,16 +61,23 @@ jobs:
 
       - name: Record the spec commit this repo was last generated from
         id: before
-        run: echo "sha=$(git -C hush-hush rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+        run: |
+          echo "sha=$(git -C hush-hush rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "spec-blob=$(git -C hush-hush rev-parse HEAD:api/openapi.yaml)" >> "$GITHUB_OUTPUT"
 
       - name: Pull hush-hush's latest spec
         run: git submodule update --remote hush-hush
 
+      # Diffs api/openapi.yaml's own blob, not the submodule commit: the
+      # submodule pointer moves on every hush-hush commit, most of which
+      # never touch the spec, and comparing commit SHAs alone treated an
+      # unrelated main-branch change as a spec change every time.
       - name: Check whether the spec actually moved
         id: moved
         run: |
           after=$(git -C hush-hush rev-parse HEAD)
-          if [ "$after" = "${{ steps.before.outputs.sha }}" ]; then
+          after_spec=$(git -C hush-hush rev-parse HEAD:api/openapi.yaml)
+          if [ "$after_spec" = "${{ steps.before.outputs.spec-blob }}" ]; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
@@ -118,12 +132,11 @@ jobs:
 
       # RELEASE_TOKEN, not the default GITHUB_TOKEN: a PR authored by
       # GITHUB_TOKEN sits at action_required with zero jobs run on every
-      # workflow triggered against it -- ci.yml included, so a human
-      # reviewing this regeneration has no CI signal at all until someone
-      # clicks "Approve and run". RELEASE_TOKEN authors it as a real
-      # collaborator instead, so checks actually run; this doesn't change
-      # this job's own no-auto-merge-without-review policy, only whether
-      # a reviewer can see real CI results.
+      # workflow triggered against it -- ci.yml included, so
+      # codegen-auto-merge.yml would arm auto-merge against a PR that
+      # never actually ran a single check. RELEASE_TOKEN authors it as a
+      # real collaborator instead, so checks actually run before that
+      # auto-merge can complete.
       - name: Open pull request
         if: steps.moved.outputs.changed == 'true'
         id: pr
@@ -134,4 +147,4 @@ jobs:
           title: ${{ steps.message.outputs.title }}
           body: ${{ steps.message.outputs.body }}
           branch: codegen/regenerate
-          labels: kind/chore,topic/codegen
+          labels: codegen
