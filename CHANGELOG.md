@@ -1,5 +1,13 @@
 # Changelog
 
+## [4.0.2](https://github.com/alrayyes/hush-hush-go/compare/v4.0.1...v4.0.2) (2026-09-27)
+
+
+### Bug Fixes
+
+* bump go.mod module path to /v4, add CI check to catch a future drift ([7c9c515](https://github.com/alrayyes/hush-hush-go/commit/7c9c5159a50c1a8ec5bf29de6d52fce7261d2fd7))
+* bump go.mod module path to /v4, add CI check to catch a future drift ([05ccf43](https://github.com/alrayyes/hush-hush-go/commit/05ccf43405a35215d84ef7013b64f80bf25df2eb)), closes [#170](https://github.com/alrayyes/hush-hush-go/issues/170)
+
 ## [4.0.1](https://github.com/alrayyes/hush-hush-go/compare/v4.0.0...v4.0.1) (2026-09-27)
 
 
