@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	hushhush "github.com/alrayyes/hush-hush-go/v2"
+	hushhush "github.com/alrayyes/hush-hush-go/v4"
 )
 
 func TestSmoke_CreateGetDeleteRoundTrip(t *testing.T) {

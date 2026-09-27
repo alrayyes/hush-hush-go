@@ -114,6 +114,36 @@ jobs:
       - name: go mod edit -fmt
         run: go mod edit -fmt go.mod && git diff --exit-code go.mod
 
+      # go.mod's module path must carry a /vN suffix matching the major
+      # version once that major is 2 or higher (Go's semantic import
+      # versioning: https://go.dev/ref/mod#major-version-suffixes).
+      # release-please computes the next version from Conventional Commits
+      # and stages it into .release-please-manifest.json on its own release
+      # PR, before that PR's merge is what actually cuts the tag - this
+      # step reads the same file, so it runs (and can fail) on that PR too,
+      # catching a mismatch before it ships as an unreachable tag rather
+      # than after. Nothing else in this pipeline ties the two together:
+      # bumping the module path is still a manual edit, same as the fix in
+      # this commit - see openspec/design.md's "Update, later audit" note
+      # and alrayyes/hush-hush-go#86/#170, where that manual step was
+      # missed three major bumps running.
+      - name: go.mod module path matches the version about to release
+        run: |
+          module_path=$(go mod edit -json | jq -r '.Module.Path')
+          manifest_version=$(jq -r '."."' .release-please-manifest.json)
+          manifest_major=${manifest_version%%.*}
+
+          if [ "$manifest_major" -ge 2 ]; then
+            expected="${module_path%/v*}/v${manifest_major}"
+            if [ "$module_path" != "$expected" ]; then
+              echo "::error::go.mod declares module path '$module_path', but .release-please-manifest.json's version ($manifest_version) requires the '/v${manifest_major}' suffix (expected '$expected'). Run: go mod edit -module=$expected, update every internal import, then re-run go build/go test." >&2
+              exit 1
+            fi
+          elif [[ "$module_path" =~ /v[0-9]+$ ]]; then
+            echo "::error::go.mod declares module path '$module_path' with a version suffix, but .release-please-manifest.json's version ($manifest_version) is major $manifest_major, which must NOT carry a /vN suffix." >&2
+            exit 1
+          fi
+
   # Pinning a dependency stops it drifting; it says nothing about the
   # pinned version having a known CVE since. Separate from the update pull
   # request Dependabot raises - this runs on every push, whatever's pinned

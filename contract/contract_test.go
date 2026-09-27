@@ -13,7 +13,7 @@ import (
 	"os"
 	"testing"
 
-	hushhush "github.com/alrayyes/hush-hush-go/v2"
+	hushhush "github.com/alrayyes/hush-hush-go/v4"
 )
 
 func mustClient(t *testing.T) *hushhush.Client {
