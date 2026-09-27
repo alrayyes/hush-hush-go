@@ -16,6 +16,17 @@ type (
 	UpdateObjectRequest = genclient.UpdateObjectRequest
 	// UsedBy is returned by GetObjectUsedBy.
 	UsedBy = genclient.UsedBy
+	// ConsumerEntry is one directory entry returned by ListConsumers (its
+	// paginated ConsumersResult.Page shape), AddConsumer, and
+	// UpdateConsumer.
+	ConsumerEntry = genclient.ConsumerEntry
+	// ConsumersPage is ListConsumers's paginated response shape, returned
+	// via ConsumersResult.Page when its filter has any field set.
+	ConsumersPage = genclient.ConsumersPage
+	// AddConsumerRequest is the payload for AddConsumer.
+	AddConsumerRequest = genclient.AddConsumerRequest
+	// UpdateConsumerRequest is the payload for UpdateConsumer.
+	UpdateConsumerRequest = genclient.UpdateConsumerRequest
 	// Health is returned by Client.Health.
 	Health = genclient.Health
 	// AuthStatus is returned by Client.AuthStatus.
