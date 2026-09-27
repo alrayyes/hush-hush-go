@@ -174,6 +174,23 @@ type CreateObjectRequest struct {
 	// slug. Fixed at creation - there is no way to change it later.
 	Description *ObjectDescription `json:"description,omitempty"`
 
+	// KeepReadableCopy Requests that the owner's own escrowed identity public key be
+	// included as an additional decrypt recipient, alongside whatever
+	// consumer recipients the client already resolved
+	// (specs/secret-objects/spec.md's "Opt-in owner-recipient inclusion
+	// at create time" requirement). Omitting this field (the default)
+	// means the owner is not added as a recipient - this service never
+	// makes ownership imply decrypt access on its own.
+	//
+	// This is a client-side sealing instruction, not something this
+	// service enforces or verifies: it never decrypts, and never adds a
+	// recipient to `value` itself - the caller has to add the owner's
+	// public key (`GET /auth/identity`) to its own recipient list before
+	// sealing. A create or update response echoes back exactly what that
+	// same request asked for; it isn't persisted, so a later fetch never
+	// carries this field.
+	KeepReadableCopy *KeepReadableCopy `json:"keep_readable_copy,omitempty"`
+
 	// Slug A caller-chosen, unique identifier for an object - what every
 	// documented request path (URL, CLI, API) addresses it by. The
 	// object's internal id is a separate, opaque value never exposed to
@@ -244,6 +261,23 @@ type Health struct {
 	Version string `json:"version"`
 }
 
+// KeepReadableCopy Requests that the owner's own escrowed identity public key be
+// included as an additional decrypt recipient, alongside whatever
+// consumer recipients the client already resolved
+// (specs/secret-objects/spec.md's "Opt-in owner-recipient inclusion
+// at create time" requirement). Omitting this field (the default)
+// means the owner is not added as a recipient - this service never
+// makes ownership imply decrypt access on its own.
+//
+// This is a client-side sealing instruction, not something this
+// service enforces or verifies: it never decrypts, and never adds a
+// recipient to `value` itself - the caller has to add the owner's
+// public key (`GET /auth/identity`) to its own recipient list before
+// sealing. A create or update response echoes back exactly what that
+// same request asked for; it isn't persisted, so a later fetch never
+// carries this field.
+type KeepReadableCopy = bool
+
 // LoginFinishRequest defines model for LoginFinishRequest.
 type LoginFinishRequest struct {
 	// Credential The browser's assertion response, exactly as
@@ -265,6 +299,23 @@ type ObjectMetadata struct {
 	// slug. Fixed at creation - there is no way to change it later.
 	Description *ObjectDescription `json:"description,omitempty"`
 
+	// KeepReadableCopy Requests that the owner's own escrowed identity public key be
+	// included as an additional decrypt recipient, alongside whatever
+	// consumer recipients the client already resolved
+	// (specs/secret-objects/spec.md's "Opt-in owner-recipient inclusion
+	// at create time" requirement). Omitting this field (the default)
+	// means the owner is not added as a recipient - this service never
+	// makes ownership imply decrypt access on its own.
+	//
+	// This is a client-side sealing instruction, not something this
+	// service enforces or verifies: it never decrypts, and never adds a
+	// recipient to `value` itself - the caller has to add the owner's
+	// public key (`GET /auth/identity`) to its own recipient list before
+	// sealing. A create or update response echoes back exactly what that
+	// same request asked for; it isn't persisted, so a later fetch never
+	// carries this field.
+	KeepReadableCopy *KeepReadableCopy `json:"keep_readable_copy,omitempty"`
+
 	// Slug A caller-chosen, unique identifier for an object - what every
 	// documented request path (URL, CLI, API) addresses it by. The
 	// object's internal id is a separate, opaque value never exposed to
@@ -285,6 +336,14 @@ type ObjectMetadata struct {
 // or accepted from a caller (specs/secret-objects/spec.md's
 // "Internal id decoupled from user-facing slug" requirement).
 type ObjectSlug = string
+
+// OwnerIdentity defines model for OwnerIdentity.
+type OwnerIdentity struct {
+	// PublicKey The session's user's escrowed writer identity public key (an
+	// age recipient string), absent if that user hasn't completed a
+	// first registration yet.
+	PublicKey *string `json:"public_key,omitempty"`
+}
 
 // RegistrationFinishRequest defines model for RegistrationFinishRequest.
 type RegistrationFinishRequest struct {
@@ -391,6 +450,23 @@ type UpdateConsumerRequest struct {
 
 // UpdateObjectRequest defines model for UpdateObjectRequest.
 type UpdateObjectRequest struct {
+	// KeepReadableCopy Requests that the owner's own escrowed identity public key be
+	// included as an additional decrypt recipient, alongside whatever
+	// consumer recipients the client already resolved
+	// (specs/secret-objects/spec.md's "Opt-in owner-recipient inclusion
+	// at create time" requirement). Omitting this field (the default)
+	// means the owner is not added as a recipient - this service never
+	// makes ownership imply decrypt access on its own.
+	//
+	// This is a client-side sealing instruction, not something this
+	// service enforces or verifies: it never decrypts, and never adds a
+	// recipient to `value` itself - the caller has to add the owner's
+	// public key (`GET /auth/identity`) to its own recipient list before
+	// sealing. A create or update response echoes back exactly what that
+	// same request asked for; it isn't persisted, so a later fetch never
+	// carries this field.
+	KeepReadableCopy *KeepReadableCopy `json:"keep_readable_copy,omitempty"`
+
 	// UsedBy Replaces the object's recorded used_by list, the same way
 	// CreateObjectRequest's used_by sets it initially - omit this
 	// field entirely to leave the existing list untouched. An
@@ -828,6 +904,9 @@ type ClientInterface interface {
 	// QueryAuditLogFilterOptions request
 	QueryAuditLogFilterOptions(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetOwnerIdentity request
+	GetOwnerIdentity(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// BeginLogin request
 	BeginLogin(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -933,6 +1012,18 @@ func (c *Client) QueryAuditLog(ctx context.Context, params *QueryAuditLogParams,
 
 func (c *Client) QueryAuditLogFilterOptions(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewQueryAuditLogFilterOptionsRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetOwnerIdentity(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetOwnerIdentityRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -1475,6 +1566,33 @@ func NewQueryAuditLogFilterOptionsRequest(server string) (*http.Request, error) 
 	}
 
 	operationPath := fmt.Sprintf("/audit-log/filter-options")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetOwnerIdentityRequest generates requests for GetOwnerIdentity
+func NewGetOwnerIdentityRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/auth/identity")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -2650,6 +2768,9 @@ type ClientWithResponsesInterface interface {
 	// QueryAuditLogFilterOptionsWithResponse request
 	QueryAuditLogFilterOptionsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*QueryAuditLogFilterOptionsResponse, error)
 
+	// GetOwnerIdentityWithResponse request
+	GetOwnerIdentityWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetOwnerIdentityResponse, error)
+
 	// BeginLoginWithResponse request
 	BeginLoginWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*BeginLoginResponse, error)
 
@@ -2796,6 +2917,37 @@ func (r QueryAuditLogFilterOptionsResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r QueryAuditLogFilterOptionsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetOwnerIdentityResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *OwnerIdentity
+	JSON401      *Unauthorized
+}
+
+// Status returns HTTPResponse.Status
+func (r GetOwnerIdentityResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetOwnerIdentityResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetOwnerIdentityResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -3570,6 +3722,15 @@ func (c *ClientWithResponses) QueryAuditLogFilterOptionsWithResponse(ctx context
 	return ParseQueryAuditLogFilterOptionsResponse(rsp)
 }
 
+// GetOwnerIdentityWithResponse request returning *GetOwnerIdentityResponse
+func (c *ClientWithResponses) GetOwnerIdentityWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetOwnerIdentityResponse, error) {
+	rsp, err := c.GetOwnerIdentity(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetOwnerIdentityResponse(rsp)
+}
+
 // BeginLoginWithResponse request returning *BeginLoginResponse
 func (c *ClientWithResponses) BeginLoginWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*BeginLoginResponse, error) {
 	rsp, err := c.BeginLogin(ctx, reqEditors...)
@@ -3911,6 +4072,39 @@ func ParseQueryAuditLogFilterOptionsResponse(rsp *http.Response) (*QueryAuditLog
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetOwnerIdentityResponse parses an HTTP response from a GetOwnerIdentityWithResponse call
+func ParseGetOwnerIdentityResponse(rsp *http.Response) (*GetOwnerIdentityResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetOwnerIdentityResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest OwnerIdentity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
 
 	}
 
