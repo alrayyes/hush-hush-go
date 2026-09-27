@@ -18,7 +18,7 @@ func TestNewClient_CredentialFromEnvironment(t *testing.T) {
 		gotAuth = r.Header.Get("Authorization")
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
-		_ = json.NewEncoder(w).Encode(map[string]any{"id": "x"})
+		_ = json.NewEncoder(w).Encode(map[string]any{"slug": "x"})
 	}))
 	defer srv.Close()
 
@@ -26,7 +26,7 @@ func TestNewClient_CredentialFromEnvironment(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewClient: %v", err)
 	}
-	if _, err := client.CreateObject(context.Background(), hushhush.CreateObjectRequest{Id: "x", Value: []byte("v")}, ""); err != nil {
+	if _, err := client.CreateObject(context.Background(), hushhush.CreateObjectRequest{Slug: "x", Value: []byte("v")}, ""); err != nil {
 		t.Fatalf("CreateObject: %v", err)
 	}
 	if want := "Bearer env-token"; gotAuth != want {
@@ -42,7 +42,7 @@ func TestNewClient_ExplicitCredentialOverridesEnvironment(t *testing.T) {
 		gotAuth = r.Header.Get("Authorization")
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
-		_ = json.NewEncoder(w).Encode(map[string]any{"id": "x"})
+		_ = json.NewEncoder(w).Encode(map[string]any{"slug": "x"})
 	}))
 	defer srv.Close()
 
@@ -50,7 +50,7 @@ func TestNewClient_ExplicitCredentialOverridesEnvironment(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewClient: %v", err)
 	}
-	if _, err := client.CreateObject(context.Background(), hushhush.CreateObjectRequest{Id: "x", Value: []byte("v")}, ""); err != nil {
+	if _, err := client.CreateObject(context.Background(), hushhush.CreateObjectRequest{Slug: "x", Value: []byte("v")}, ""); err != nil {
 		t.Fatalf("CreateObject: %v", err)
 	}
 	if want := "Bearer explicit-token"; gotAuth != want {
@@ -143,7 +143,7 @@ func TestClient_ListObjects_RequiresCredential(t *testing.T) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		_ = json.NewEncoder(w).Encode([]hushhush.ObjectMetadata{{Id: "obj-1"}})
+		_ = json.NewEncoder(w).Encode([]hushhush.ObjectMetadata{{Slug: "obj-1"}})
 	}))
 	defer srv.Close()
 
@@ -165,7 +165,7 @@ func TestClient_ListObjects_RequiresCredential(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListObjects: %v", err)
 	}
-	if len(objects) != 1 || objects[0].Id != "obj-1" {
+	if len(objects) != 1 || objects[0].Slug != "obj-1" {
 		t.Errorf("objects = %+v, want one entry for obj-1", objects)
 	}
 }

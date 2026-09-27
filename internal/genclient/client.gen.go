@@ -105,9 +105,15 @@ type AuditLogEntry struct {
 	// address; this service isn't deployed behind a reverse proxy or
 	// load balancer, so X-Forwarded-For (or similar) support isn't
 	// implemented yet.
-	Ip        string    `json:"ip"`
-	ObjectId  ObjectId  `json:"object_id"`
-	Timestamp time.Time `json:"timestamp"`
+	Ip string `json:"ip"`
+
+	// ObjectId A caller-chosen, unique identifier for an object - what every
+	// documented request path (URL, CLI, API) addresses it by. The
+	// object's internal id is a separate, opaque value never exposed to
+	// or accepted from a caller (specs/secret-objects/spec.md's
+	// "Internal id decoupled from user-facing slug" requirement).
+	ObjectId  ObjectSlug `json:"object_id"`
+	Timestamp time.Time  `json:"timestamp"`
 }
 
 // AuditLogEntryAction defines model for AuditLogEntry.Action.
@@ -127,7 +133,7 @@ type AuditLogFilterOptions struct {
 	Callers []string `json:"callers"`
 
 	// ObjectIds Every distinct object id currently recorded in the audit log.
-	ObjectIds []ObjectId `json:"object_ids"`
+	ObjectIds []ObjectSlug `json:"object_ids"`
 }
 
 // AuthStatus defines model for AuthStatus.
@@ -165,9 +171,15 @@ type ConsumersPage struct {
 // CreateObjectRequest defines model for CreateObjectRequest.
 type CreateObjectRequest struct {
 	// Description A free-text label set at creation, for a reader who only knows the
-	// id. Fixed at creation - there is no way to change it later.
+	// slug. Fixed at creation - there is no way to change it later.
 	Description *ObjectDescription `json:"description,omitempty"`
-	Id          ObjectId           `json:"id"`
+
+	// Slug A caller-chosen, unique identifier for an object - what every
+	// documented request path (URL, CLI, API) addresses it by. The
+	// object's internal id is a separate, opaque value never exposed to
+	// or accepted from a caller (specs/secret-objects/spec.md's
+	// "Internal id decoupled from user-facing slug" requirement).
+	Slug ObjectSlug `json:"slug"`
 
 	// UsedBy The consumers (repos or hosts) recorded as depending on this
 	// object. Set at creation, and replaceable later via
@@ -244,18 +256,21 @@ type LoginFinishRequest struct {
 type LoginOptions map[string]interface{}
 
 // ObjectDescription A free-text label set at creation, for a reader who only knows the
-// id. Fixed at creation - there is no way to change it later.
+// slug. Fixed at creation - there is no way to change it later.
 type ObjectDescription = string
-
-// ObjectId defines model for ObjectId.
-type ObjectId = string
 
 // ObjectMetadata defines model for ObjectMetadata.
 type ObjectMetadata struct {
 	// Description A free-text label set at creation, for a reader who only knows the
-	// id. Fixed at creation - there is no way to change it later.
+	// slug. Fixed at creation - there is no way to change it later.
 	Description *ObjectDescription `json:"description,omitempty"`
-	Id          ObjectId           `json:"id"`
+
+	// Slug A caller-chosen, unique identifier for an object - what every
+	// documented request path (URL, CLI, API) addresses it by. The
+	// object's internal id is a separate, opaque value never exposed to
+	// or accepted from a caller (specs/secret-objects/spec.md's
+	// "Internal id decoupled from user-facing slug" requirement).
+	Slug ObjectSlug `json:"slug"`
 
 	// UsedBy The consumers (repos or hosts) recorded as depending on this
 	// object. Set at creation, and replaceable later via
@@ -263,6 +278,13 @@ type ObjectMetadata struct {
 	// that omits it leaves the list as it was.
 	UsedBy *UsedByList `json:"used_by,omitempty"`
 }
+
+// ObjectSlug A caller-chosen, unique identifier for an object - what every
+// documented request path (URL, CLI, API) addresses it by. The
+// object's internal id is a separate, opaque value never exposed to
+// or accepted from a caller (specs/secret-objects/spec.md's
+// "Internal id decoupled from user-facing slug" requirement).
+type ObjectSlug = string
 
 // RegistrationFinishRequest defines model for RegistrationFinishRequest.
 type RegistrationFinishRequest struct {
@@ -406,8 +428,12 @@ type CsrfToken = string
 // CsrfTokenOptional defines model for csrfTokenOptional.
 type CsrfTokenOptional = string
 
-// Id defines model for id.
-type Id = ObjectId
+// Slug A caller-chosen, unique identifier for an object - what every
+// documented request path (URL, CLI, API) addresses it by. The
+// object's internal id is a separate, opaque value never exposed to
+// or accepted from a caller (specs/secret-objects/spec.md's
+// "Internal id decoupled from user-facing slug" requirement).
+type Slug = ObjectSlug
 
 // BadRequest defines model for BadRequest.
 type BadRequest = Error
@@ -433,7 +459,7 @@ type cookieAuthContextKey string
 // QueryAuditLogParams defines parameters for QueryAuditLog.
 type QueryAuditLogParams struct {
 	// ObjectId Restrict to entries for this object id.
-	ObjectId *ObjectId `form:"object_id,omitempty" json:"object_id,omitempty"`
+	ObjectId *ObjectSlug `form:"object_id,omitempty" json:"object_id,omitempty"`
 
 	// Caller Restrict to entries recorded with this caller identity.
 	Caller *string `form:"caller,omitempty" json:"caller,omitempty"`
@@ -868,18 +894,18 @@ type ClientInterface interface {
 	CreateObject(ctx context.Context, params *CreateObjectParams, body CreateObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteObject request
-	DeleteObject(ctx context.Context, id Id, params *DeleteObjectParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	DeleteObject(ctx context.Context, slug Slug, params *DeleteObjectParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetObject request
-	GetObject(ctx context.Context, id Id, params *GetObjectParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetObject(ctx context.Context, slug Slug, params *GetObjectParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateObjectWithBody request with any body
-	UpdateObjectWithBody(ctx context.Context, id Id, params *UpdateObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateObjectWithBody(ctx context.Context, slug Slug, params *UpdateObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateObject(ctx context.Context, id Id, params *UpdateObjectParams, body UpdateObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateObject(ctx context.Context, slug Slug, params *UpdateObjectParams, body UpdateObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetObjectUsedBy request
-	GetObjectUsedBy(ctx context.Context, id Id, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetObjectUsedBy(ctx context.Context, slug Slug, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListTokens request
 	ListTokens(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1205,8 +1231,8 @@ func (c *Client) CreateObject(ctx context.Context, params *CreateObjectParams, b
 	return c.Client.Do(req)
 }
 
-func (c *Client) DeleteObject(ctx context.Context, id Id, params *DeleteObjectParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewDeleteObjectRequest(c.Server, id, params)
+func (c *Client) DeleteObject(ctx context.Context, slug Slug, params *DeleteObjectParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteObjectRequest(c.Server, slug, params)
 	if err != nil {
 		return nil, err
 	}
@@ -1217,8 +1243,8 @@ func (c *Client) DeleteObject(ctx context.Context, id Id, params *DeleteObjectPa
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetObject(ctx context.Context, id Id, params *GetObjectParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetObjectRequest(c.Server, id, params)
+func (c *Client) GetObject(ctx context.Context, slug Slug, params *GetObjectParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetObjectRequest(c.Server, slug, params)
 	if err != nil {
 		return nil, err
 	}
@@ -1229,8 +1255,8 @@ func (c *Client) GetObject(ctx context.Context, id Id, params *GetObjectParams, 
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpdateObjectWithBody(ctx context.Context, id Id, params *UpdateObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUpdateObjectRequestWithBody(c.Server, id, params, contentType, body)
+func (c *Client) UpdateObjectWithBody(ctx context.Context, slug Slug, params *UpdateObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateObjectRequestWithBody(c.Server, slug, params, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1241,8 +1267,8 @@ func (c *Client) UpdateObjectWithBody(ctx context.Context, id Id, params *Update
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpdateObject(ctx context.Context, id Id, params *UpdateObjectParams, body UpdateObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUpdateObjectRequest(c.Server, id, params, body)
+func (c *Client) UpdateObject(ctx context.Context, slug Slug, params *UpdateObjectParams, body UpdateObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateObjectRequest(c.Server, slug, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1253,8 +1279,8 @@ func (c *Client) UpdateObject(ctx context.Context, id Id, params *UpdateObjectPa
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetObjectUsedBy(ctx context.Context, id Id, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetObjectUsedByRequest(c.Server, id)
+func (c *Client) GetObjectUsedBy(ctx context.Context, slug Slug, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetObjectUsedByRequest(c.Server, slug)
 	if err != nil {
 		return nil, err
 	}
@@ -2233,12 +2259,12 @@ func NewCreateObjectRequestWithBody(server string, params *CreateObjectParams, c
 }
 
 // NewDeleteObjectRequest generates requests for DeleteObject
-func NewDeleteObjectRequest(server string, id Id, params *DeleteObjectParams) (*http.Request, error) {
+func NewDeleteObjectRequest(server string, slug Slug, params *DeleteObjectParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "slug", slug, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
 	if err != nil {
 		return nil, err
 	}
@@ -2293,12 +2319,12 @@ func NewDeleteObjectRequest(server string, id Id, params *DeleteObjectParams) (*
 }
 
 // NewGetObjectRequest generates requests for GetObject
-func NewGetObjectRequest(server string, id Id, params *GetObjectParams) (*http.Request, error) {
+func NewGetObjectRequest(server string, slug Slug, params *GetObjectParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "slug", slug, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
 	if err != nil {
 		return nil, err
 	}
@@ -2342,23 +2368,23 @@ func NewGetObjectRequest(server string, id Id, params *GetObjectParams) (*http.R
 }
 
 // NewUpdateObjectRequest calls the generic UpdateObject builder with application/json body
-func NewUpdateObjectRequest(server string, id Id, params *UpdateObjectParams, body UpdateObjectJSONRequestBody) (*http.Request, error) {
+func NewUpdateObjectRequest(server string, slug Slug, params *UpdateObjectParams, body UpdateObjectJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewUpdateObjectRequestWithBody(server, id, params, "application/json", bodyReader)
+	return NewUpdateObjectRequestWithBody(server, slug, params, "application/json", bodyReader)
 }
 
 // NewUpdateObjectRequestWithBody generates requests for UpdateObject with any type of body
-func NewUpdateObjectRequestWithBody(server string, id Id, params *UpdateObjectParams, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateObjectRequestWithBody(server string, slug Slug, params *UpdateObjectParams, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "slug", slug, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
 	if err != nil {
 		return nil, err
 	}
@@ -2415,12 +2441,12 @@ func NewUpdateObjectRequestWithBody(server string, id Id, params *UpdateObjectPa
 }
 
 // NewGetObjectUsedByRequest generates requests for GetObjectUsedBy
-func NewGetObjectUsedByRequest(server string, id Id) (*http.Request, error) {
+func NewGetObjectUsedByRequest(server string, slug Slug) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "slug", slug, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
 	if err != nil {
 		return nil, err
 	}
@@ -2690,18 +2716,18 @@ type ClientWithResponsesInterface interface {
 	CreateObjectWithResponse(ctx context.Context, params *CreateObjectParams, body CreateObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateObjectResponse, error)
 
 	// DeleteObjectWithResponse request
-	DeleteObjectWithResponse(ctx context.Context, id Id, params *DeleteObjectParams, reqEditors ...RequestEditorFn) (*DeleteObjectResponse, error)
+	DeleteObjectWithResponse(ctx context.Context, slug Slug, params *DeleteObjectParams, reqEditors ...RequestEditorFn) (*DeleteObjectResponse, error)
 
 	// GetObjectWithResponse request
-	GetObjectWithResponse(ctx context.Context, id Id, params *GetObjectParams, reqEditors ...RequestEditorFn) (*GetObjectResponse, error)
+	GetObjectWithResponse(ctx context.Context, slug Slug, params *GetObjectParams, reqEditors ...RequestEditorFn) (*GetObjectResponse, error)
 
 	// UpdateObjectWithBodyWithResponse request with any body
-	UpdateObjectWithBodyWithResponse(ctx context.Context, id Id, params *UpdateObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateObjectResponse, error)
+	UpdateObjectWithBodyWithResponse(ctx context.Context, slug Slug, params *UpdateObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateObjectResponse, error)
 
-	UpdateObjectWithResponse(ctx context.Context, id Id, params *UpdateObjectParams, body UpdateObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateObjectResponse, error)
+	UpdateObjectWithResponse(ctx context.Context, slug Slug, params *UpdateObjectParams, body UpdateObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateObjectResponse, error)
 
 	// GetObjectUsedByWithResponse request
-	GetObjectUsedByWithResponse(ctx context.Context, id Id, reqEditors ...RequestEditorFn) (*GetObjectUsedByResponse, error)
+	GetObjectUsedByWithResponse(ctx context.Context, slug Slug, reqEditors ...RequestEditorFn) (*GetObjectUsedByResponse, error)
 
 	// ListTokensWithResponse request
 	ListTokensWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListTokensResponse, error)
@@ -3754,8 +3780,8 @@ func (c *ClientWithResponses) CreateObjectWithResponse(ctx context.Context, para
 }
 
 // DeleteObjectWithResponse request returning *DeleteObjectResponse
-func (c *ClientWithResponses) DeleteObjectWithResponse(ctx context.Context, id Id, params *DeleteObjectParams, reqEditors ...RequestEditorFn) (*DeleteObjectResponse, error) {
-	rsp, err := c.DeleteObject(ctx, id, params, reqEditors...)
+func (c *ClientWithResponses) DeleteObjectWithResponse(ctx context.Context, slug Slug, params *DeleteObjectParams, reqEditors ...RequestEditorFn) (*DeleteObjectResponse, error) {
+	rsp, err := c.DeleteObject(ctx, slug, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -3763,8 +3789,8 @@ func (c *ClientWithResponses) DeleteObjectWithResponse(ctx context.Context, id I
 }
 
 // GetObjectWithResponse request returning *GetObjectResponse
-func (c *ClientWithResponses) GetObjectWithResponse(ctx context.Context, id Id, params *GetObjectParams, reqEditors ...RequestEditorFn) (*GetObjectResponse, error) {
-	rsp, err := c.GetObject(ctx, id, params, reqEditors...)
+func (c *ClientWithResponses) GetObjectWithResponse(ctx context.Context, slug Slug, params *GetObjectParams, reqEditors ...RequestEditorFn) (*GetObjectResponse, error) {
+	rsp, err := c.GetObject(ctx, slug, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -3772,16 +3798,16 @@ func (c *ClientWithResponses) GetObjectWithResponse(ctx context.Context, id Id, 
 }
 
 // UpdateObjectWithBodyWithResponse request with arbitrary body returning *UpdateObjectResponse
-func (c *ClientWithResponses) UpdateObjectWithBodyWithResponse(ctx context.Context, id Id, params *UpdateObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateObjectResponse, error) {
-	rsp, err := c.UpdateObjectWithBody(ctx, id, params, contentType, body, reqEditors...)
+func (c *ClientWithResponses) UpdateObjectWithBodyWithResponse(ctx context.Context, slug Slug, params *UpdateObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateObjectResponse, error) {
+	rsp, err := c.UpdateObjectWithBody(ctx, slug, params, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseUpdateObjectResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateObjectWithResponse(ctx context.Context, id Id, params *UpdateObjectParams, body UpdateObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateObjectResponse, error) {
-	rsp, err := c.UpdateObject(ctx, id, params, body, reqEditors...)
+func (c *ClientWithResponses) UpdateObjectWithResponse(ctx context.Context, slug Slug, params *UpdateObjectParams, body UpdateObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateObjectResponse, error) {
+	rsp, err := c.UpdateObject(ctx, slug, params, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -3789,8 +3815,8 @@ func (c *ClientWithResponses) UpdateObjectWithResponse(ctx context.Context, id I
 }
 
 // GetObjectUsedByWithResponse request returning *GetObjectUsedByResponse
-func (c *ClientWithResponses) GetObjectUsedByWithResponse(ctx context.Context, id Id, reqEditors ...RequestEditorFn) (*GetObjectUsedByResponse, error) {
-	rsp, err := c.GetObjectUsedBy(ctx, id, reqEditors...)
+func (c *ClientWithResponses) GetObjectUsedByWithResponse(ctx context.Context, slug Slug, reqEditors ...RequestEditorFn) (*GetObjectUsedByResponse, error) {
+	rsp, err := c.GetObjectUsedBy(ctx, slug, reqEditors...)
 	if err != nil {
 		return nil, err
 	}

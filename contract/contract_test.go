@@ -48,7 +48,7 @@ func TestContract_CreateGetDeleteObject(t *testing.T) {
 	ctx := context.Background()
 
 	if _, err := client.CreateObject(ctx, hushhush.CreateObjectRequest{
-		Id:    "contract-test-object",
+		Slug:  "contract-test-object",
 		Value: []byte("sealed-value"),
 	}, "hush-hush-go-contract-test"); err != nil {
 		t.Fatalf("CreateObject: %v", err)
