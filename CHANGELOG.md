@@ -1,5 +1,13 @@
 # Changelog
 
+## [4.1.0](https://github.com/alrayyes/hush-hush-go/compare/v4.0.2...v4.1.0) (2026-09-27)
+
+
+### Features
+
+* wrap the /consumers endpoints (list/add/update/delete) ([f794615](https://github.com/alrayyes/hush-hush-go/commit/f79461584386a89c00ea3a020139620cfce1b85d))
+* wrap the /consumers endpoints (list/add/update/delete) ([f7f08b2](https://github.com/alrayyes/hush-hush-go/commit/f7f08b2555d9b911f7ee328f464ce18f4306c02f)), closes [#167](https://github.com/alrayyes/hush-hush-go/issues/167)
+
 ## [4.0.2](https://github.com/alrayyes/hush-hush-go/compare/v4.0.1...v4.0.2) (2026-09-27)
 
 
