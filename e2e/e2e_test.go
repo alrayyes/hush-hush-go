@@ -34,7 +34,7 @@ func TestSmoke_CreateGetDeleteRoundTrip(t *testing.T) {
 	caller := "hush-hush-go-e2e"
 
 	if _, err := client.CreateObject(ctx, hushhush.CreateObjectRequest{
-		Id:    id,
+		Slug:  id,
 		Value: []byte("e2e-smoke-value"),
 	}, caller); err != nil {
 		t.Fatalf("CreateObject: %v", err)
