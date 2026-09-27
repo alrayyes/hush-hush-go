@@ -76,7 +76,7 @@ argument to most methods, is optional — pass `""` to leave it unset. The
 consumer directory (`ListConsumers`, `AddConsumer`, `UpdateConsumer`,
 `DeleteConsumer`, and `GetConsumerPublicKey` for resolving one consumer's
 registered age public key by exact name) always requires a credential, the
-same as `ListObjects` — listing needs no id the caller already holds. See
+same as `ListObjects` — listing needs no ID the caller already holds. See
 [GoDoc](https://pkg.go.dev/github.com/alrayyes/hush-hush-go) for the full API
 surface.
 
