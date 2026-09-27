@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	hushhush "github.com/alrayyes/hush-hush-go/v2"
+	hushhush "github.com/alrayyes/hush-hush-go/v4"
 )
 
 func TestClient_QueryAuditLog_Filters(t *testing.T) {

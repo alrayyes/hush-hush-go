@@ -7,7 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	hushhush "github.com/alrayyes/hush-hush-go/v2"
+	hushhush "github.com/alrayyes/hush-hush-go/v4"
 )
 
 func TestClient_TypedErrorMapping(t *testing.T) {

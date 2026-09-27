@@ -1,4 +1,4 @@
-module github.com/alrayyes/hush-hush-go/v2
+module github.com/alrayyes/hush-hush-go/v4
 
 go 1.26
 

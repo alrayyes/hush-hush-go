@@ -56,6 +56,18 @@ this pipeline has no mechanism to do it automatically, so any future
 major bump needs the same manual `go.mod` + internal-import edit before
 it's real.
 
+**Update, later audit (2026-09-27)**: the note above wasn't enough — the
+same gap recurred silently at both the v2→v3 and v3→v4 boundaries, leaving
+every tag from v3.0.0 through v4.0.0 unconsumable the same way v2.0.0 was
+(alrayyes/hush-hush-go#170). A doc note has no way to block a release; the
+`gomod` job in `ci.yml` now reads `go.mod`'s module path and
+`.release-please-manifest.json`'s staged version on every push and PR —
+including release-please's own release PR, which stages that file's next
+value before its merge is what cuts the tag — and fails the check if the
+major-version suffix doesn't match. The manual `go.mod` + internal-import
+edit is still required at each major bump; what changed is that skipping
+it now fails CI instead of shipping quietly.
+
 **Update, later audit**: the auto-merge step described above was removed from
 `codegen.yml`. That grant was scoped to the session that built this repo, not
 to the CI workflow permanently — `rules/sdk-generation.md` calls for real
