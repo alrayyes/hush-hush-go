@@ -383,6 +383,12 @@ type RegistrationFinishRequest struct {
 // specification rather than reproduced here field by field.
 type RegistrationOptions map[string]interface{}
 
+// RotateTokenRequest defines model for RotateTokenRequest.
+type RotateTokenRequest struct {
+	// TtlSeconds How long the rotated token stays valid for, starting now.
+	TtlSeconds int64 `json:"ttl_seconds"`
+}
+
 // TokenId defines model for TokenId.
 type TokenId = string
 
@@ -736,6 +742,16 @@ type RevokeTokenParams struct {
 	XCSRFToken CsrfToken `json:"X-CSRF-Token"`
 }
 
+// RotateTokenParams defines parameters for RotateToken.
+type RotateTokenParams struct {
+	// XCSRFToken The current session's own CSRF token - required on every
+	// session-authenticated request that changes state. Delivered as a
+	// second, readable `csrf_token` cookie alongside the (httpOnly)
+	// session cookie at login/registration time; the frontend reads that
+	// cookie and echoes its value back here.
+	XCSRFToken CsrfToken `json:"X-CSRF-Token"`
+}
+
 // FinishLoginJSONRequestBody defines body for FinishLogin for application/json ContentType.
 type FinishLoginJSONRequestBody = LoginFinishRequest
 
@@ -762,6 +778,9 @@ type UpdateObjectJSONRequestBody = UpdateObjectRequest
 
 // CreateTokenJSONRequestBody defines body for CreateToken for application/json ContentType.
 type CreateTokenJSONRequestBody = CreateTokenRequest
+
+// RotateTokenJSONRequestBody defines body for RotateToken for application/json ContentType.
+type RotateTokenJSONRequestBody = RotateTokenRequest
 
 // AsListConsumers200JSONResponseBody0 returns the union data inside the ListConsumers200JSONResponseBody as a ListConsumers200JSONResponseBody0
 func (t ListConsumers200JSONResponseBody) AsListConsumers200JSONResponseBody0() (ListConsumers200JSONResponseBody0, error) {
@@ -996,6 +1015,11 @@ type ClientInterface interface {
 
 	// RevokeToken request
 	RevokeToken(ctx context.Context, id TokenId, params *RevokeTokenParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RotateTokenWithBody request with any body
+	RotateTokenWithBody(ctx context.Context, id TokenId, params *RotateTokenParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	RotateToken(ctx context.Context, id TokenId, params *RotateTokenParams, body RotateTokenJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 func (c *Client) QueryAuditLog(ctx context.Context, params *QueryAuditLogParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -1420,6 +1444,30 @@ func (c *Client) CreateToken(ctx context.Context, params *CreateTokenParams, bod
 
 func (c *Client) RevokeToken(ctx context.Context, id TokenId, params *RevokeTokenParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewRevokeTokenRequest(c.Server, id, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) RotateTokenWithBody(ctx context.Context, id TokenId, params *RotateTokenParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRotateTokenRequestWithBody(c.Server, id, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) RotateToken(ctx context.Context, id TokenId, params *RotateTokenParams, body RotateTokenJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRotateTokenRequest(c.Server, id, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -2719,6 +2767,66 @@ func NewRevokeTokenRequest(server string, id TokenId, params *RevokeTokenParams)
 	return req, nil
 }
 
+// NewRotateTokenRequest calls the generic RotateToken builder with application/json body
+func NewRotateTokenRequest(server string, id TokenId, params *RotateTokenParams, body RotateTokenJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewRotateTokenRequestWithBody(server, id, params, "application/json", bodyReader)
+}
+
+// NewRotateTokenRequestWithBody generates requests for RotateToken with any type of body
+func NewRotateTokenRequestWithBody(server string, id TokenId, params *RotateTokenParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tokens/%s/rotate", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithOptions("simple", false, "X-CSRF-Token", params.XCSRFToken, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("X-CSRF-Token", headerParam0)
+
+	}
+
+	return req, nil
+}
+
 func (c *Client) applyEditors(ctx context.Context, req *http.Request, additionalEditors []RequestEditorFn) error {
 	for _, r := range c.RequestEditors {
 		if err := r(ctx, req); err != nil {
@@ -2860,6 +2968,11 @@ type ClientWithResponsesInterface interface {
 
 	// RevokeTokenWithResponse request
 	RevokeTokenWithResponse(ctx context.Context, id TokenId, params *RevokeTokenParams, reqEditors ...RequestEditorFn) (*RevokeTokenResponse, error)
+
+	// RotateTokenWithBodyWithResponse request with any body
+	RotateTokenWithBodyWithResponse(ctx context.Context, id TokenId, params *RotateTokenParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RotateTokenResponse, error)
+
+	RotateTokenWithResponse(ctx context.Context, id TokenId, params *RotateTokenParams, body RotateTokenJSONRequestBody, reqEditors ...RequestEditorFn) (*RotateTokenResponse, error)
 }
 
 type QueryAuditLogResponse struct {
@@ -3704,6 +3817,39 @@ func (r RevokeTokenResponse) ContentType() string {
 	return ""
 }
 
+type RotateTokenResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *TokenWithValue
+	JSON400      *BadRequest
+	JSON401      *Unauthorized
+	JSON404      *NotFound
+}
+
+// Status returns HTTPResponse.Status
+func (r RotateTokenResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RotateTokenResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RotateTokenResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // QueryAuditLogWithResponse request returning *QueryAuditLogResponse
 func (c *ClientWithResponses) QueryAuditLogWithResponse(ctx context.Context, params *QueryAuditLogParams, reqEditors ...RequestEditorFn) (*QueryAuditLogResponse, error) {
 	rsp, err := c.QueryAuditLog(ctx, params, reqEditors...)
@@ -4017,6 +4163,23 @@ func (c *ClientWithResponses) RevokeTokenWithResponse(ctx context.Context, id To
 		return nil, err
 	}
 	return ParseRevokeTokenResponse(rsp)
+}
+
+// RotateTokenWithBodyWithResponse request with arbitrary body returning *RotateTokenResponse
+func (c *ClientWithResponses) RotateTokenWithBodyWithResponse(ctx context.Context, id TokenId, params *RotateTokenParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RotateTokenResponse, error) {
+	rsp, err := c.RotateTokenWithBody(ctx, id, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRotateTokenResponse(rsp)
+}
+
+func (c *ClientWithResponses) RotateTokenWithResponse(ctx context.Context, id TokenId, params *RotateTokenParams, body RotateTokenJSONRequestBody, reqEditors ...RequestEditorFn) (*RotateTokenResponse, error) {
+	rsp, err := c.RotateToken(ctx, id, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRotateTokenResponse(rsp)
 }
 
 // ParseQueryAuditLogResponse parses an HTTP response from a QueryAuditLogWithResponse call
@@ -4942,6 +5105,53 @@ func ParseRevokeTokenResponse(rsp *http.Response) (*RevokeTokenResponse, error) 
 			return nil, err
 		}
 		response.JSON401 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseRotateTokenResponse parses an HTTP response from a RotateTokenWithResponse call
+func ParseRotateTokenResponse(rsp *http.Response) (*RotateTokenResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RotateTokenResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest TokenWithValue
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	}
 
