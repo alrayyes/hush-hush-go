@@ -195,6 +195,15 @@ type Credential struct {
 	// LastUsedAt Absent if this credential has never been used to log in.
 	LastUsedAt *time.Time `json:"last_used_at,omitempty"`
 	Nickname   string     `json:"nickname"`
+
+	// WrappedIdentity This credential's own copy of the user's escrowed writer
+	// identity private key, wrapped with a key derived from this
+	// credential's WebAuthn PRF extension output and
+	// base64-encoded. Absent for a credential that doesn't support
+	// PRF. Safe to return to the authenticated owner: it's already
+	// wrapped, and only unwrappable with that same credential's own
+	// PRF secret or the break-glass recovery phrase.
+	WrappedIdentity *string `json:"wrapped_identity,omitempty"`
 }
 
 // CredentialId defines model for CredentialId.
@@ -263,6 +272,28 @@ type RegistrationFinishRequest struct {
 
 	// Nickname A human-readable label for this credential, shown in the credentials list.
 	Nickname *string `json:"nickname,omitempty"`
+
+	// PublicKey The escrowed writer identity's age recipient string, sent
+	// only on the account's first-ever registration - a repeat
+	// registration resending this is a no-op against the identity
+	// already recorded, never an overwrite.
+	PublicKey *string `json:"public_key,omitempty"`
+
+	// RecoveryWrappedIdentity The escrowed writer identity's private key, wrapped
+	// client-side with a key derived from the one-time break-glass
+	// recovery phrase, sent only on the account's first-ever
+	// registration. The server never sees the phrase itself, only
+	// this already-wrapped copy.
+	RecoveryWrappedIdentity *string `json:"recovery_wrapped_identity,omitempty"`
+
+	// WrappedIdentity This credential's own copy of the user's escrowed writer
+	// identity private key, wrapped client-side with a key derived
+	// from this credential's WebAuthn PRF extension output and
+	// base64-encoded. Omitted when the browser's registration
+	// reported no PRF support for this credential - the server
+	// never generates, verifies, or unwraps this value, only stores
+	// it.
+	WrappedIdentity *string `json:"wrapped_identity,omitempty"`
 }
 
 // RegistrationOptions A WebAuthn `PublicKeyCredentialCreationOptions` object, passed
