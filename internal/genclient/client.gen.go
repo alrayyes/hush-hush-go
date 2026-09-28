@@ -644,42 +644,42 @@ type LogoutParams struct {
 
 // CreateConsumerTokenParams defines parameters for CreateConsumerToken.
 type CreateConsumerTokenParams struct {
-	// XCSRFToken The current session's own CSRF token - required on every
-	// session-authenticated request that changes state. Delivered as a
-	// second, readable `csrf_token` cookie alongside the (httpOnly)
-	// session cookie at login/registration time; the frontend reads that
-	// cookie and echoes its value back here.
-	XCSRFToken CsrfToken `json:"X-CSRF-Token"`
+	// XCSRFToken The current session's own CSRF token - required when the request
+	// is authenticated by a session, not present or checked when it's
+	// authenticated by a bearer token instead (which has no session, and
+	// so no CSRF token to send). See `csrfToken` for the always-required
+	// form used where session auth is the only option.
+	XCSRFToken *CsrfTokenOptional `json:"X-CSRF-Token,omitempty"`
 }
 
 // RevokeConsumerTokenParams defines parameters for RevokeConsumerToken.
 type RevokeConsumerTokenParams struct {
-	// XCSRFToken The current session's own CSRF token - required on every
-	// session-authenticated request that changes state. Delivered as a
-	// second, readable `csrf_token` cookie alongside the (httpOnly)
-	// session cookie at login/registration time; the frontend reads that
-	// cookie and echoes its value back here.
-	XCSRFToken CsrfToken `json:"X-CSRF-Token"`
+	// XCSRFToken The current session's own CSRF token - required when the request
+	// is authenticated by a session, not present or checked when it's
+	// authenticated by a bearer token instead (which has no session, and
+	// so no CSRF token to send). See `csrfToken` for the always-required
+	// form used where session auth is the only option.
+	XCSRFToken *CsrfTokenOptional `json:"X-CSRF-Token,omitempty"`
 }
 
 // PurgeConsumerTokenParams defines parameters for PurgeConsumerToken.
 type PurgeConsumerTokenParams struct {
-	// XCSRFToken The current session's own CSRF token - required on every
-	// session-authenticated request that changes state. Delivered as a
-	// second, readable `csrf_token` cookie alongside the (httpOnly)
-	// session cookie at login/registration time; the frontend reads that
-	// cookie and echoes its value back here.
-	XCSRFToken CsrfToken `json:"X-CSRF-Token"`
+	// XCSRFToken The current session's own CSRF token - required when the request
+	// is authenticated by a session, not present or checked when it's
+	// authenticated by a bearer token instead (which has no session, and
+	// so no CSRF token to send). See `csrfToken` for the always-required
+	// form used where session auth is the only option.
+	XCSRFToken *CsrfTokenOptional `json:"X-CSRF-Token,omitempty"`
 }
 
 // RotateConsumerTokenParams defines parameters for RotateConsumerToken.
 type RotateConsumerTokenParams struct {
-	// XCSRFToken The current session's own CSRF token - required on every
-	// session-authenticated request that changes state. Delivered as a
-	// second, readable `csrf_token` cookie alongside the (httpOnly)
-	// session cookie at login/registration time; the frontend reads that
-	// cookie and echoes its value back here.
-	XCSRFToken CsrfToken `json:"X-CSRF-Token"`
+	// XCSRFToken The current session's own CSRF token - required when the request
+	// is authenticated by a session, not present or checked when it's
+	// authenticated by a bearer token instead (which has no session, and
+	// so no CSRF token to send). See `csrfToken` for the always-required
+	// form used where session auth is the only option.
+	XCSRFToken *CsrfTokenOptional `json:"X-CSRF-Token,omitempty"`
 }
 
 // ListConsumersParams defines parameters for ListConsumers.
@@ -2159,14 +2159,16 @@ func NewCreateConsumerTokenRequestWithBody(server string, params *CreateConsumer
 
 	if params != nil {
 
-		var headerParam0 string
+		if params.XCSRFToken != nil {
+			var headerParam0 string
 
-		headerParam0, err = runtime.StyleParamWithOptions("simple", false, "X-CSRF-Token", params.XCSRFToken, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-		if err != nil {
-			return nil, err
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "X-CSRF-Token", *params.XCSRFToken, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("X-CSRF-Token", headerParam0)
 		}
-
-		req.Header.Set("X-CSRF-Token", headerParam0)
 
 	}
 
@@ -2206,14 +2208,16 @@ func NewRevokeConsumerTokenRequest(server string, id ConsumerTokenId, params *Re
 
 	if params != nil {
 
-		var headerParam0 string
+		if params.XCSRFToken != nil {
+			var headerParam0 string
 
-		headerParam0, err = runtime.StyleParamWithOptions("simple", false, "X-CSRF-Token", params.XCSRFToken, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-		if err != nil {
-			return nil, err
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "X-CSRF-Token", *params.XCSRFToken, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("X-CSRF-Token", headerParam0)
 		}
-
-		req.Header.Set("X-CSRF-Token", headerParam0)
 
 	}
 
@@ -2253,14 +2257,16 @@ func NewPurgeConsumerTokenRequest(server string, id ConsumerTokenId, params *Pur
 
 	if params != nil {
 
-		var headerParam0 string
+		if params.XCSRFToken != nil {
+			var headerParam0 string
 
-		headerParam0, err = runtime.StyleParamWithOptions("simple", false, "X-CSRF-Token", params.XCSRFToken, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-		if err != nil {
-			return nil, err
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "X-CSRF-Token", *params.XCSRFToken, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("X-CSRF-Token", headerParam0)
 		}
-
-		req.Header.Set("X-CSRF-Token", headerParam0)
 
 	}
 
@@ -2313,14 +2319,16 @@ func NewRotateConsumerTokenRequestWithBody(server string, id ConsumerTokenId, pa
 
 	if params != nil {
 
-		var headerParam0 string
+		if params.XCSRFToken != nil {
+			var headerParam0 string
 
-		headerParam0, err = runtime.StyleParamWithOptions("simple", false, "X-CSRF-Token", params.XCSRFToken, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-		if err != nil {
-			return nil, err
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "X-CSRF-Token", *params.XCSRFToken, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("X-CSRF-Token", headerParam0)
 		}
-
-		req.Header.Set("X-CSRF-Token", headerParam0)
 
 	}
 
