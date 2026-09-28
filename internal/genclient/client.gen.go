@@ -18,8 +18,9 @@ import (
 )
 
 const (
-	BearerAuthScopes bearerAuthContextKey = "bearerAuth.Scopes"
-	CookieAuthScopes cookieAuthContextKey = "cookieAuth.Scopes"
+	BearerAuthScopes         bearerAuthContextKey         = "bearerAuth.Scopes"
+	ConsumerBearerAuthScopes consumerBearerAuthContextKey = "consumerBearerAuth.Scopes"
+	CookieAuthScopes         cookieAuthContextKey         = "cookieAuth.Scopes"
 )
 
 // Defines values for AuditLogEntryAction.
@@ -158,6 +159,39 @@ type ConsumerEntry struct {
 	SecretCount int32 `json:"secret_count"`
 }
 
+// ConsumerTokenId defines model for ConsumerTokenId.
+type ConsumerTokenId = string
+
+// ConsumerTokenMetadata defines model for ConsumerTokenMetadata.
+type ConsumerTokenMetadata struct {
+	Consumer    string          `json:"consumer"`
+	CreatedAt   time.Time       `json:"created_at"`
+	Description string          `json:"description"`
+	ExpiresAt   time.Time       `json:"expires_at"`
+	Id          ConsumerTokenId `json:"id"`
+
+	// LastUsedAt Absent if this token has never authenticated a request.
+	LastUsedAt *time.Time `json:"last_used_at,omitempty"`
+	Revoked    bool       `json:"revoked"`
+}
+
+// ConsumerTokenWithValue defines model for ConsumerTokenWithValue.
+type ConsumerTokenWithValue struct {
+	Consumer    string          `json:"consumer"`
+	CreatedAt   time.Time       `json:"created_at"`
+	Description string          `json:"description"`
+	ExpiresAt   time.Time       `json:"expires_at"`
+	Id          ConsumerTokenId `json:"id"`
+
+	// LastUsedAt Absent if this token has never authenticated a request.
+	LastUsedAt *time.Time `json:"last_used_at,omitempty"`
+	Revoked    bool       `json:"revoked"`
+
+	// Value The raw consumer token. Shown here once, at creation, and
+	// never again.
+	Value string `json:"value"`
+}
+
 // ConsumersPage defines model for ConsumersPage.
 type ConsumersPage struct {
 	Consumers []ConsumerEntry `json:"consumers"`
@@ -166,6 +200,20 @@ type ConsumersPage struct {
 	// across every page - not just this page's own count - so a
 	// caller can render page-number navigation.
 	Total int32 `json:"total"`
+}
+
+// CreateConsumerTokenRequest defines model for CreateConsumerTokenRequest.
+type CreateConsumerTokenRequest struct {
+	// Consumer The consumer this token is scoped to - it authorizes
+	// `getObject` only for an object whose `used_by` list includes
+	// this name. Free text, matching how a consumer name is stored
+	// elsewhere (`used_by`, `/consumers`); the consumer doesn't have
+	// to already exist.
+	Consumer    string `json:"consumer"`
+	Description string `json:"description"`
+
+	// TtlSeconds How long the token stays valid for, starting now.
+	TtlSeconds int64 `json:"ttl_seconds"`
 }
 
 // CreateObjectRequest defines model for CreateObjectRequest.
@@ -383,6 +431,12 @@ type RegistrationFinishRequest struct {
 // specification rather than reproduced here field by field.
 type RegistrationOptions map[string]interface{}
 
+// RotateConsumerTokenRequest defines model for RotateConsumerTokenRequest.
+type RotateConsumerTokenRequest struct {
+	// TtlSeconds How long the rotated token stays valid for, starting now.
+	TtlSeconds int64 `json:"ttl_seconds"`
+}
+
 // RotateTokenRequest defines model for RotateTokenRequest.
 type RotateTokenRequest struct {
 	// TtlSeconds How long the rotated token stays valid for, starting now.
@@ -535,6 +589,9 @@ type UnknownConsumer = Error
 // bearerAuthContextKey is the context key for bearerAuth security scheme
 type bearerAuthContextKey string
 
+// consumerBearerAuthContextKey is the context key for consumerBearerAuth security scheme
+type consumerBearerAuthContextKey string
+
 // cookieAuthContextKey is the context key for cookieAuth security scheme
 type cookieAuthContextKey string
 
@@ -574,6 +631,36 @@ type QueryAuditLogParams struct {
 
 // LogoutParams defines parameters for Logout.
 type LogoutParams struct {
+	// XCSRFToken The current session's own CSRF token - required on every
+	// session-authenticated request that changes state. Delivered as a
+	// second, readable `csrf_token` cookie alongside the (httpOnly)
+	// session cookie at login/registration time; the frontend reads that
+	// cookie and echoes its value back here.
+	XCSRFToken CsrfToken `json:"X-CSRF-Token"`
+}
+
+// CreateConsumerTokenParams defines parameters for CreateConsumerToken.
+type CreateConsumerTokenParams struct {
+	// XCSRFToken The current session's own CSRF token - required on every
+	// session-authenticated request that changes state. Delivered as a
+	// second, readable `csrf_token` cookie alongside the (httpOnly)
+	// session cookie at login/registration time; the frontend reads that
+	// cookie and echoes its value back here.
+	XCSRFToken CsrfToken `json:"X-CSRF-Token"`
+}
+
+// RevokeConsumerTokenParams defines parameters for RevokeConsumerToken.
+type RevokeConsumerTokenParams struct {
+	// XCSRFToken The current session's own CSRF token - required on every
+	// session-authenticated request that changes state. Delivered as a
+	// second, readable `csrf_token` cookie alongside the (httpOnly)
+	// session cookie at login/registration time; the frontend reads that
+	// cookie and echoes its value back here.
+	XCSRFToken CsrfToken `json:"X-CSRF-Token"`
+}
+
+// RotateConsumerTokenParams defines parameters for RotateConsumerToken.
+type RotateConsumerTokenParams struct {
 	// XCSRFToken The current session's own CSRF token - required on every
 	// session-authenticated request that changes state. Delivered as a
 	// second, readable `csrf_token` cookie alongside the (httpOnly)
@@ -757,6 +844,12 @@ type FinishLoginJSONRequestBody = LoginFinishRequest
 
 // FinishRegistrationJSONRequestBody defines body for FinishRegistration for application/json ContentType.
 type FinishRegistrationJSONRequestBody = RegistrationFinishRequest
+
+// CreateConsumerTokenJSONRequestBody defines body for CreateConsumerToken for application/json ContentType.
+type CreateConsumerTokenJSONRequestBody = CreateConsumerTokenRequest
+
+// RotateConsumerTokenJSONRequestBody defines body for RotateConsumerToken for application/json ContentType.
+type RotateConsumerTokenJSONRequestBody = RotateConsumerTokenRequest
 
 // AddConsumerJSONRequestBody defines body for AddConsumer for application/json ContentType.
 type AddConsumerJSONRequestBody = AddConsumerRequest
@@ -947,6 +1040,22 @@ type ClientInterface interface {
 
 	// GetAuthStatus request
 	GetAuthStatus(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListConsumerTokens request
+	ListConsumerTokens(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateConsumerTokenWithBody request with any body
+	CreateConsumerTokenWithBody(ctx context.Context, params *CreateConsumerTokenParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	CreateConsumerToken(ctx context.Context, params *CreateConsumerTokenParams, body CreateConsumerTokenJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RevokeConsumerToken request
+	RevokeConsumerToken(ctx context.Context, id ConsumerTokenId, params *RevokeConsumerTokenParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RotateConsumerTokenWithBody request with any body
+	RotateConsumerTokenWithBody(ctx context.Context, id ConsumerTokenId, params *RotateConsumerTokenParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	RotateConsumerToken(ctx context.Context, id ConsumerTokenId, params *RotateConsumerTokenParams, body RotateConsumerTokenJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListConsumers request
 	ListConsumers(ctx context.Context, params *ListConsumersParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1144,6 +1253,78 @@ func (c *Client) FinishRegistration(ctx context.Context, body FinishRegistration
 
 func (c *Client) GetAuthStatus(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetAuthStatusRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) ListConsumerTokens(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListConsumerTokensRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) CreateConsumerTokenWithBody(ctx context.Context, params *CreateConsumerTokenParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateConsumerTokenRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) CreateConsumerToken(ctx context.Context, params *CreateConsumerTokenParams, body CreateConsumerTokenJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateConsumerTokenRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) RevokeConsumerToken(ctx context.Context, id ConsumerTokenId, params *RevokeConsumerTokenParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRevokeConsumerTokenRequest(c.Server, id, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) RotateConsumerTokenWithBody(ctx context.Context, id ConsumerTokenId, params *RotateConsumerTokenParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRotateConsumerTokenRequestWithBody(c.Server, id, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) RotateConsumerToken(ctx context.Context, id ConsumerTokenId, params *RotateConsumerTokenParams, body RotateConsumerTokenJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRotateConsumerTokenRequest(c.Server, id, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1854,6 +2035,193 @@ func NewGetAuthStatusRequest(server string) (*http.Request, error) {
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
 	if err != nil {
 		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListConsumerTokensRequest generates requests for ListConsumerTokens
+func NewListConsumerTokensRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/consumer-tokens")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateConsumerTokenRequest calls the generic CreateConsumerToken builder with application/json body
+func NewCreateConsumerTokenRequest(server string, params *CreateConsumerTokenParams, body CreateConsumerTokenJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateConsumerTokenRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewCreateConsumerTokenRequestWithBody generates requests for CreateConsumerToken with any type of body
+func NewCreateConsumerTokenRequestWithBody(server string, params *CreateConsumerTokenParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/consumer-tokens")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithOptions("simple", false, "X-CSRF-Token", params.XCSRFToken, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("X-CSRF-Token", headerParam0)
+
+	}
+
+	return req, nil
+}
+
+// NewRevokeConsumerTokenRequest generates requests for RevokeConsumerToken
+func NewRevokeConsumerTokenRequest(server string, id ConsumerTokenId, params *RevokeConsumerTokenParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/consumer-tokens/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithOptions("simple", false, "X-CSRF-Token", params.XCSRFToken, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("X-CSRF-Token", headerParam0)
+
+	}
+
+	return req, nil
+}
+
+// NewRotateConsumerTokenRequest calls the generic RotateConsumerToken builder with application/json body
+func NewRotateConsumerTokenRequest(server string, id ConsumerTokenId, params *RotateConsumerTokenParams, body RotateConsumerTokenJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewRotateConsumerTokenRequestWithBody(server, id, params, "application/json", bodyReader)
+}
+
+// NewRotateConsumerTokenRequestWithBody generates requests for RotateConsumerToken with any type of body
+func NewRotateConsumerTokenRequestWithBody(server string, id ConsumerTokenId, params *RotateConsumerTokenParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/consumer-tokens/%s/rotate", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithOptions("simple", false, "X-CSRF-Token", params.XCSRFToken, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("X-CSRF-Token", headerParam0)
+
 	}
 
 	return req, nil
@@ -2901,6 +3269,22 @@ type ClientWithResponsesInterface interface {
 	// GetAuthStatusWithResponse request
 	GetAuthStatusWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetAuthStatusResponse, error)
 
+	// ListConsumerTokensWithResponse request
+	ListConsumerTokensWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListConsumerTokensResponse, error)
+
+	// CreateConsumerTokenWithBodyWithResponse request with any body
+	CreateConsumerTokenWithBodyWithResponse(ctx context.Context, params *CreateConsumerTokenParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateConsumerTokenResponse, error)
+
+	CreateConsumerTokenWithResponse(ctx context.Context, params *CreateConsumerTokenParams, body CreateConsumerTokenJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateConsumerTokenResponse, error)
+
+	// RevokeConsumerTokenWithResponse request
+	RevokeConsumerTokenWithResponse(ctx context.Context, id ConsumerTokenId, params *RevokeConsumerTokenParams, reqEditors ...RequestEditorFn) (*RevokeConsumerTokenResponse, error)
+
+	// RotateConsumerTokenWithBodyWithResponse request with any body
+	RotateConsumerTokenWithBodyWithResponse(ctx context.Context, id ConsumerTokenId, params *RotateConsumerTokenParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RotateConsumerTokenResponse, error)
+
+	RotateConsumerTokenWithResponse(ctx context.Context, id ConsumerTokenId, params *RotateConsumerTokenParams, body RotateConsumerTokenJSONRequestBody, reqEditors ...RequestEditorFn) (*RotateConsumerTokenResponse, error)
+
 	// ListConsumersWithResponse request
 	ListConsumersWithResponse(ctx context.Context, params *ListConsumersParams, reqEditors ...RequestEditorFn) (*ListConsumersResponse, error)
 
@@ -3246,6 +3630,132 @@ func (r GetAuthStatusResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetAuthStatusResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListConsumerTokensResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *[]ConsumerTokenMetadata
+	JSON401      *Unauthorized
+}
+
+// Status returns HTTPResponse.Status
+func (r ListConsumerTokensResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListConsumerTokensResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListConsumerTokensResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateConsumerTokenResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *ConsumerTokenWithValue
+	JSON400      *BadRequest
+	JSON401      *Unauthorized
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateConsumerTokenResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateConsumerTokenResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateConsumerTokenResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type RevokeConsumerTokenResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON401      *Unauthorized
+}
+
+// Status returns HTTPResponse.Status
+func (r RevokeConsumerTokenResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RevokeConsumerTokenResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RevokeConsumerTokenResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type RotateConsumerTokenResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ConsumerTokenWithValue
+	JSON400      *BadRequest
+	JSON401      *Unauthorized
+	JSON404      *NotFound
+}
+
+// Status returns HTTPResponse.Status
+func (r RotateConsumerTokenResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RotateConsumerTokenResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RotateConsumerTokenResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -3634,6 +4144,7 @@ func (r DeleteObjectResponse) ContentType() string {
 type GetObjectResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
+	JSON401      *Unauthorized
 	JSON404      *NotFound
 }
 
@@ -3945,6 +4456,58 @@ func (c *ClientWithResponses) GetAuthStatusWithResponse(ctx context.Context, req
 		return nil, err
 	}
 	return ParseGetAuthStatusResponse(rsp)
+}
+
+// ListConsumerTokensWithResponse request returning *ListConsumerTokensResponse
+func (c *ClientWithResponses) ListConsumerTokensWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListConsumerTokensResponse, error) {
+	rsp, err := c.ListConsumerTokens(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListConsumerTokensResponse(rsp)
+}
+
+// CreateConsumerTokenWithBodyWithResponse request with arbitrary body returning *CreateConsumerTokenResponse
+func (c *ClientWithResponses) CreateConsumerTokenWithBodyWithResponse(ctx context.Context, params *CreateConsumerTokenParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateConsumerTokenResponse, error) {
+	rsp, err := c.CreateConsumerTokenWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateConsumerTokenResponse(rsp)
+}
+
+func (c *ClientWithResponses) CreateConsumerTokenWithResponse(ctx context.Context, params *CreateConsumerTokenParams, body CreateConsumerTokenJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateConsumerTokenResponse, error) {
+	rsp, err := c.CreateConsumerToken(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateConsumerTokenResponse(rsp)
+}
+
+// RevokeConsumerTokenWithResponse request returning *RevokeConsumerTokenResponse
+func (c *ClientWithResponses) RevokeConsumerTokenWithResponse(ctx context.Context, id ConsumerTokenId, params *RevokeConsumerTokenParams, reqEditors ...RequestEditorFn) (*RevokeConsumerTokenResponse, error) {
+	rsp, err := c.RevokeConsumerToken(ctx, id, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRevokeConsumerTokenResponse(rsp)
+}
+
+// RotateConsumerTokenWithBodyWithResponse request with arbitrary body returning *RotateConsumerTokenResponse
+func (c *ClientWithResponses) RotateConsumerTokenWithBodyWithResponse(ctx context.Context, id ConsumerTokenId, params *RotateConsumerTokenParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RotateConsumerTokenResponse, error) {
+	rsp, err := c.RotateConsumerTokenWithBody(ctx, id, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRotateConsumerTokenResponse(rsp)
+}
+
+func (c *ClientWithResponses) RotateConsumerTokenWithResponse(ctx context.Context, id ConsumerTokenId, params *RotateConsumerTokenParams, body RotateConsumerTokenJSONRequestBody, reqEditors ...RequestEditorFn) (*RotateConsumerTokenResponse, error) {
+	rsp, err := c.RotateConsumerToken(ctx, id, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRotateConsumerTokenResponse(rsp)
 }
 
 // ListConsumersWithResponse request returning *ListConsumersResponse
@@ -4465,6 +5028,152 @@ func ParseGetAuthStatusResponse(rsp *http.Response) (*GetAuthStatusResponse, err
 	return response, nil
 }
 
+// ParseListConsumerTokensResponse parses an HTTP response from a ListConsumerTokensWithResponse call
+func ParseListConsumerTokensResponse(rsp *http.Response) (*ListConsumerTokensResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListConsumerTokensResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []ConsumerTokenMetadata
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateConsumerTokenResponse parses an HTTP response from a CreateConsumerTokenWithResponse call
+func ParseCreateConsumerTokenResponse(rsp *http.Response) (*CreateConsumerTokenResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateConsumerTokenResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest ConsumerTokenWithValue
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseRevokeConsumerTokenResponse parses an HTTP response from a RevokeConsumerTokenWithResponse call
+func ParseRevokeConsumerTokenResponse(rsp *http.Response) (*RevokeConsumerTokenResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RevokeConsumerTokenResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseRotateConsumerTokenResponse parses an HTTP response from a RotateConsumerTokenWithResponse call
+func ParseRotateConsumerTokenResponse(rsp *http.Response) (*RotateConsumerTokenResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RotateConsumerTokenResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ConsumerTokenWithValue
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseListConsumersResponse parses an HTTP response from a ListConsumersWithResponse call
 func ParseListConsumersResponse(rsp *http.Response) (*ListConsumersResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -4927,6 +5636,13 @@ func ParseGetObjectResponse(rsp *http.Response) (*GetObjectResponse, error) {
 	}
 
 	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
 		var dest NotFound
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
