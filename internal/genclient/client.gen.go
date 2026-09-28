@@ -580,6 +580,9 @@ type ConsumerAlreadyExists = Error
 // NotFound defines model for NotFound.
 type NotFound = Error
 
+// TokenStillActive defines model for TokenStillActive.
+type TokenStillActive = Error
+
 // Unauthorized defines model for Unauthorized.
 type Unauthorized = Error
 
@@ -651,6 +654,16 @@ type CreateConsumerTokenParams struct {
 
 // RevokeConsumerTokenParams defines parameters for RevokeConsumerToken.
 type RevokeConsumerTokenParams struct {
+	// XCSRFToken The current session's own CSRF token - required on every
+	// session-authenticated request that changes state. Delivered as a
+	// second, readable `csrf_token` cookie alongside the (httpOnly)
+	// session cookie at login/registration time; the frontend reads that
+	// cookie and echoes its value back here.
+	XCSRFToken CsrfToken `json:"X-CSRF-Token"`
+}
+
+// PurgeConsumerTokenParams defines parameters for PurgeConsumerToken.
+type PurgeConsumerTokenParams struct {
 	// XCSRFToken The current session's own CSRF token - required on every
 	// session-authenticated request that changes state. Delivered as a
 	// second, readable `csrf_token` cookie alongside the (httpOnly)
@@ -821,6 +834,16 @@ type CreateTokenParams struct {
 
 // RevokeTokenParams defines parameters for RevokeToken.
 type RevokeTokenParams struct {
+	// XCSRFToken The current session's own CSRF token - required on every
+	// session-authenticated request that changes state. Delivered as a
+	// second, readable `csrf_token` cookie alongside the (httpOnly)
+	// session cookie at login/registration time; the frontend reads that
+	// cookie and echoes its value back here.
+	XCSRFToken CsrfToken `json:"X-CSRF-Token"`
+}
+
+// PurgeTokenParams defines parameters for PurgeToken.
+type PurgeTokenParams struct {
 	// XCSRFToken The current session's own CSRF token - required on every
 	// session-authenticated request that changes state. Delivered as a
 	// second, readable `csrf_token` cookie alongside the (httpOnly)
@@ -1052,6 +1075,9 @@ type ClientInterface interface {
 	// RevokeConsumerToken request
 	RevokeConsumerToken(ctx context.Context, id ConsumerTokenId, params *RevokeConsumerTokenParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PurgeConsumerToken request
+	PurgeConsumerToken(ctx context.Context, id ConsumerTokenId, params *PurgeConsumerTokenParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// RotateConsumerTokenWithBody request with any body
 	RotateConsumerTokenWithBody(ctx context.Context, id ConsumerTokenId, params *RotateConsumerTokenParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -1124,6 +1150,9 @@ type ClientInterface interface {
 
 	// RevokeToken request
 	RevokeToken(ctx context.Context, id TokenId, params *RevokeTokenParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PurgeToken request
+	PurgeToken(ctx context.Context, id TokenId, params *PurgeTokenParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// RotateTokenWithBody request with any body
 	RotateTokenWithBody(ctx context.Context, id TokenId, params *RotateTokenParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1301,6 +1330,18 @@ func (c *Client) CreateConsumerToken(ctx context.Context, params *CreateConsumer
 
 func (c *Client) RevokeConsumerToken(ctx context.Context, id ConsumerTokenId, params *RevokeConsumerTokenParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewRevokeConsumerTokenRequest(c.Server, id, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PurgeConsumerToken(ctx context.Context, id ConsumerTokenId, params *PurgeConsumerTokenParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPurgeConsumerTokenRequest(c.Server, id, params)
 	if err != nil {
 		return nil, err
 	}
@@ -1625,6 +1666,18 @@ func (c *Client) CreateToken(ctx context.Context, params *CreateTokenParams, bod
 
 func (c *Client) RevokeToken(ctx context.Context, id TokenId, params *RevokeTokenParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewRevokeTokenRequest(c.Server, id, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PurgeToken(ctx context.Context, id TokenId, params *PurgeTokenParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPurgeTokenRequest(c.Server, id, params)
 	if err != nil {
 		return nil, err
 	}
@@ -2137,6 +2190,53 @@ func NewRevokeConsumerTokenRequest(server string, id ConsumerTokenId, params *Re
 	}
 
 	operationPath := fmt.Sprintf("/consumer-tokens/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithOptions("simple", false, "X-CSRF-Token", params.XCSRFToken, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("X-CSRF-Token", headerParam0)
+
+	}
+
+	return req, nil
+}
+
+// NewPurgeConsumerTokenRequest generates requests for PurgeConsumerToken
+func NewPurgeConsumerTokenRequest(server string, id ConsumerTokenId, params *PurgeConsumerTokenParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/consumer-tokens/%s/purge", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -3135,6 +3235,53 @@ func NewRevokeTokenRequest(server string, id TokenId, params *RevokeTokenParams)
 	return req, nil
 }
 
+// NewPurgeTokenRequest generates requests for PurgeToken
+func NewPurgeTokenRequest(server string, id TokenId, params *PurgeTokenParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tokens/%s/purge", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithOptions("simple", false, "X-CSRF-Token", params.XCSRFToken, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("X-CSRF-Token", headerParam0)
+
+	}
+
+	return req, nil
+}
+
 // NewRotateTokenRequest calls the generic RotateToken builder with application/json body
 func NewRotateTokenRequest(server string, id TokenId, params *RotateTokenParams, body RotateTokenJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -3280,6 +3427,9 @@ type ClientWithResponsesInterface interface {
 	// RevokeConsumerTokenWithResponse request
 	RevokeConsumerTokenWithResponse(ctx context.Context, id ConsumerTokenId, params *RevokeConsumerTokenParams, reqEditors ...RequestEditorFn) (*RevokeConsumerTokenResponse, error)
 
+	// PurgeConsumerTokenWithResponse request
+	PurgeConsumerTokenWithResponse(ctx context.Context, id ConsumerTokenId, params *PurgeConsumerTokenParams, reqEditors ...RequestEditorFn) (*PurgeConsumerTokenResponse, error)
+
 	// RotateConsumerTokenWithBodyWithResponse request with any body
 	RotateConsumerTokenWithBodyWithResponse(ctx context.Context, id ConsumerTokenId, params *RotateConsumerTokenParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RotateConsumerTokenResponse, error)
 
@@ -3352,6 +3502,9 @@ type ClientWithResponsesInterface interface {
 
 	// RevokeTokenWithResponse request
 	RevokeTokenWithResponse(ctx context.Context, id TokenId, params *RevokeTokenParams, reqEditors ...RequestEditorFn) (*RevokeTokenResponse, error)
+
+	// PurgeTokenWithResponse request
+	PurgeTokenWithResponse(ctx context.Context, id TokenId, params *PurgeTokenParams, reqEditors ...RequestEditorFn) (*PurgeTokenResponse, error)
 
 	// RotateTokenWithBodyWithResponse request with any body
 	RotateTokenWithBodyWithResponse(ctx context.Context, id TokenId, params *RotateTokenParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RotateTokenResponse, error)
@@ -3723,6 +3876,38 @@ func (r RevokeConsumerTokenResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r RevokeConsumerTokenResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type PurgeConsumerTokenResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON401      *Unauthorized
+	JSON404      *NotFound
+	JSON409      *TokenStillActive
+}
+
+// Status returns HTTPResponse.Status
+func (r PurgeConsumerTokenResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PurgeConsumerTokenResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PurgeConsumerTokenResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -4328,6 +4513,38 @@ func (r RevokeTokenResponse) ContentType() string {
 	return ""
 }
 
+type PurgeTokenResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON401      *Unauthorized
+	JSON404      *NotFound
+	JSON409      *TokenStillActive
+}
+
+// Status returns HTTPResponse.Status
+func (r PurgeTokenResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PurgeTokenResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PurgeTokenResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type RotateTokenResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -4491,6 +4708,15 @@ func (c *ClientWithResponses) RevokeConsumerTokenWithResponse(ctx context.Contex
 		return nil, err
 	}
 	return ParseRevokeConsumerTokenResponse(rsp)
+}
+
+// PurgeConsumerTokenWithResponse request returning *PurgeConsumerTokenResponse
+func (c *ClientWithResponses) PurgeConsumerTokenWithResponse(ctx context.Context, id ConsumerTokenId, params *PurgeConsumerTokenParams, reqEditors ...RequestEditorFn) (*PurgeConsumerTokenResponse, error) {
+	rsp, err := c.PurgeConsumerToken(ctx, id, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePurgeConsumerTokenResponse(rsp)
 }
 
 // RotateConsumerTokenWithBodyWithResponse request with arbitrary body returning *RotateConsumerTokenResponse
@@ -4726,6 +4952,15 @@ func (c *ClientWithResponses) RevokeTokenWithResponse(ctx context.Context, id To
 		return nil, err
 	}
 	return ParseRevokeTokenResponse(rsp)
+}
+
+// PurgeTokenWithResponse request returning *PurgeTokenResponse
+func (c *ClientWithResponses) PurgeTokenWithResponse(ctx context.Context, id TokenId, params *PurgeTokenParams, reqEditors ...RequestEditorFn) (*PurgeTokenResponse, error) {
+	rsp, err := c.PurgeToken(ctx, id, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePurgeTokenResponse(rsp)
 }
 
 // RotateTokenWithBodyWithResponse request with arbitrary body returning *RotateTokenResponse
@@ -5121,6 +5356,46 @@ func ParseRevokeConsumerTokenResponse(rsp *http.Response) (*RevokeConsumerTokenR
 			return nil, err
 		}
 		response.JSON401 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePurgeConsumerTokenResponse parses an HTTP response from a PurgeConsumerTokenWithResponse call
+func ParsePurgeConsumerTokenResponse(rsp *http.Response) (*PurgeConsumerTokenResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PurgeConsumerTokenResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest TokenStillActive
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
 
 	}
 
@@ -5821,6 +6096,46 @@ func ParseRevokeTokenResponse(rsp *http.Response) (*RevokeTokenResponse, error) 
 			return nil, err
 		}
 		response.JSON401 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePurgeTokenResponse parses an HTTP response from a PurgeTokenWithResponse call
+func ParsePurgeTokenResponse(rsp *http.Response) (*PurgeTokenResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PurgeTokenResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest TokenStillActive
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
 
 	}
 
