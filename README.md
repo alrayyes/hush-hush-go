@@ -80,7 +80,7 @@ same as `ListObjects` — listing needs no ID the caller already holds.
 Consumer read tokens (`CreateConsumerToken`, `ListConsumerTokens`,
 `RotateConsumerToken`, `RevokeConsumerToken`, `PurgeConsumerToken`) always
 require a credential too — a write token may mint, list, rotate, revoke or
-purge one, not only an admin session. See
+purge one, not only an administrator session. See
 [GoDoc](https://pkg.go.dev/github.com/alrayyes/hush-hush-go) for the full API
 surface.
 
