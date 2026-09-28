@@ -1,5 +1,13 @@
 # Changelog
 
+## [4.2.0](https://github.com/alrayyes/hush-hush-go/compare/v4.1.4...v4.2.0) (2026-09-28)
+
+
+### Features
+
+* add consumer token client wrapper methods ([f132497](https://github.com/alrayyes/hush-hush-go/commit/f132497e85ffa0f16c8619990d3b50f6a59cd172))
+* add consumer token client wrapper methods ([c36f762](https://github.com/alrayyes/hush-hush-go/commit/c36f7623687cb5370afacb76079b49bb285282f4))
+
 ## [4.1.4](https://github.com/alrayyes/hush-hush-go/compare/v4.1.3...v4.1.4) (2026-09-28)
 
 
