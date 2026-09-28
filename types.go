@@ -27,6 +27,19 @@ type (
 	AddConsumerRequest = genclient.AddConsumerRequest
 	// UpdateConsumerRequest is the payload for UpdateConsumer.
 	UpdateConsumerRequest = genclient.UpdateConsumerRequest
+	// ConsumerTokenMetadata is one issued consumer token's metadata,
+	// returned by ListConsumerTokens and embedded in ConsumerTokenWithValue
+	// — never the raw token value, which no longer exists anywhere to
+	// return once a token is created.
+	ConsumerTokenMetadata = genclient.ConsumerTokenMetadata
+	// ConsumerTokenWithValue is returned by CreateConsumerToken and
+	// RotateConsumerToken — the only two calls that ever see the raw token
+	// value.
+	ConsumerTokenWithValue = genclient.ConsumerTokenWithValue
+	// CreateConsumerTokenRequest is the payload for CreateConsumerToken.
+	CreateConsumerTokenRequest = genclient.CreateConsumerTokenRequest
+	// RotateConsumerTokenRequest is the payload for RotateConsumerToken.
+	RotateConsumerTokenRequest = genclient.RotateConsumerTokenRequest
 	// Health is returned by Client.Health.
 	Health = genclient.Health
 	// AuthStatus is returned by Client.AuthStatus.

@@ -197,3 +197,44 @@ func TestContract_DeleteConsumer(t *testing.T) {
 		t.Fatalf("DeleteConsumer: %v", err)
 	}
 }
+
+func TestContract_ConsumerTokenLifecycle(t *testing.T) {
+	client := mustClient(t)
+	ctx := context.Background()
+
+	created, err := client.CreateConsumerToken(ctx, hushhush.CreateConsumerTokenRequest{
+		Consumer:    "hush-hush-go-contract-test-consumer",
+		Description: "contract test token",
+		TtlSeconds:  60,
+	})
+	if err != nil {
+		t.Fatalf("CreateConsumerToken: %v", err)
+	}
+	if created.Value == "" {
+		t.Error("Value is empty, want the mock spec's raw token example")
+	}
+
+	tokens, err := client.ListConsumerTokens(ctx)
+	if err != nil {
+		t.Fatalf("ListConsumerTokens: %v", err)
+	}
+	if len(tokens) == 0 {
+		t.Error("tokens is empty, want the mock spec's example consumer tokens")
+	}
+
+	rotated, err := client.RotateConsumerToken(ctx, created.Id, hushhush.RotateConsumerTokenRequest{TtlSeconds: 60})
+	if err != nil {
+		t.Fatalf("RotateConsumerToken: %v", err)
+	}
+	if rotated.Value == "" {
+		t.Error("Value is empty, want the mock spec's raw token example")
+	}
+
+	if err := client.RevokeConsumerToken(ctx, created.Id); err != nil {
+		t.Fatalf("RevokeConsumerToken: %v", err)
+	}
+
+	if err := client.PurgeConsumerToken(ctx, created.Id); err != nil {
+		t.Fatalf("PurgeConsumerToken: %v", err)
+	}
+}
