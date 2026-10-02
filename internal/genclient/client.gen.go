@@ -101,6 +101,15 @@ func (e QueryAuditLogParamsOrder) Valid() bool {
 	}
 }
 
+// Actor Who performed an audited write. `type` is `session` (the admin
+// account, `id` is its actor id), `token` (a write token, `id` is its
+// token id) or `consumer_token` (a consumer token, `id` is its id) -
+// the same values `GET /audit-log` reports.
+type Actor struct {
+	Id   string `json:"id"`
+	Type string `json:"type"`
+}
+
 // AddConsumerRequest defines model for AddConsumerRequest.
 type AddConsumerRequest struct {
 	// Name The consumer's name. Rejected if it already appears in the directory.
@@ -393,6 +402,15 @@ type ObjectDescription = string
 
 // ObjectMetadata defines model for ObjectMetadata.
 type ObjectMetadata struct {
+	// CreatedAt When the object was created. Returned by `GET /objects`; left
+	// out of a create or update response.
+	CreatedAt *time.Time `json:"created_at,omitempty"`
+
+	// CreatedBy Who created the object, from the audit log's create entry. Left
+	// out when the audit log has none, as for an object that predates
+	// auditing.
+	CreatedBy *Actor `json:"created_by,omitempty"`
+
 	// Description A free-text label set at creation, for a reader who only knows the
 	// slug. Fixed at creation - there is no way to change it later.
 	Description *ObjectDescription `json:"description,omitempty"`
@@ -427,6 +445,16 @@ type ObjectMetadata struct {
 	// Metadata only - never part of the sealed value. A response always
 	// carries the array, empty when the object has none.
 	Tags Tags `json:"tags"`
+
+	// UpdatedAt When the object's value was last replaced - equal to
+	// `created_at` for an object never updated. Returned by
+	// `GET /objects`; left out of a create or update response.
+	UpdatedAt *time.Time `json:"updated_at,omitempty"`
+
+	// UpdatedBy Who last updated the object, from the audit log. The creator
+	// for an object never updated. Left out when the audit log has
+	// no entry at all.
+	UpdatedBy *Actor `json:"updated_by,omitempty"`
 
 	// UsedBy The consumers (repos or hosts) recorded as depending on this
 	// object. Set at creation, and replaceable later via
