@@ -264,6 +264,13 @@ type CreateObjectRequest struct {
 	// "Internal id decoupled from user-facing slug" requirement).
 	Slug ObjectSlug `json:"slug"`
 
+	// Tags Labels for grouping and filtering objects (`GET /objects?tag=`).
+	// Free-form, 1 to 32 characters from `a-z 0-9 . _ / -`, at most 10
+	// per object. Uppercase is converted to lowercase and duplicates are dropped.
+	// Metadata only - never part of the sealed value. A response always
+	// carries the array, empty when the object has none.
+	Tags *Tags `json:"tags,omitempty"`
+
 	// UsedBy The consumers (repos or hosts) recorded as depending on this
 	// object. Set at creation, and replaceable later via
 	// UpdateObjectRequest's own used_by field - a plain value update
@@ -389,6 +396,13 @@ type ObjectMetadata struct {
 	// "Internal id decoupled from user-facing slug" requirement).
 	Slug ObjectSlug `json:"slug"`
 
+	// Tags Labels for grouping and filtering objects (`GET /objects?tag=`).
+	// Free-form, 1 to 32 characters from `a-z 0-9 . _ / -`, at most 10
+	// per object. Uppercase is converted to lowercase and duplicates are dropped.
+	// Metadata only - never part of the sealed value. A response always
+	// carries the array, empty when the object has none.
+	Tags Tags `json:"tags"`
+
 	// UsedBy The consumers (repos or hosts) recorded as depending on this
 	// object. Set at creation, and replaceable later via
 	// UpdateObjectRequest's own used_by field - a plain value update
@@ -460,6 +474,16 @@ type RotateTokenRequest struct {
 	// TtlSeconds How long the rotated token stays valid for, starting now.
 	TtlSeconds int64 `json:"ttl_seconds"`
 }
+
+// Tag defines model for Tag.
+type Tag = string
+
+// Tags Labels for grouping and filtering objects (`GET /objects?tag=`).
+// Free-form, 1 to 32 characters from `a-z 0-9 . _ / -`, at most 10
+// per object. Uppercase is converted to lowercase and duplicates are dropped.
+// Metadata only - never part of the sealed value. A response always
+// carries the array, empty when the object has none.
+type Tags = []Tag
 
 // TokenId defines model for TokenId.
 type TokenId = string
@@ -544,6 +568,10 @@ type UpdateObjectRequest struct {
 	// same request asked for; it isn't persisted, so a later fetch never
 	// carries this field.
 	KeepReadableCopy *KeepReadableCopy `json:"keep_readable_copy,omitempty"`
+
+	// Tags Replaces the object's tags - omit this field entirely to leave
+	// them untouched. An empty array clears them.
+	Tags *Tags `json:"tags,omitempty"`
 
 	// UsedBy Replaces the object's recorded used_by list, the same way
 	// CreateObjectRequest's used_by sets it initially - omit this
@@ -786,6 +814,11 @@ type McpJSONBody = map[string]interface{}
 type ListObjectsParams struct {
 	// UsedBy Restrict to objects whose recorded used_by lineage includes this consumer.
 	UsedBy *string `form:"used_by,omitempty" json:"used_by,omitempty"`
+
+	// Tag Restrict to objects carrying this tag. Repeat the parameter to
+	// require several - an object must carry every one. Matched
+	// case-insensitively.
+	Tag *[]Tag `form:"tag,omitempty" json:"tag,omitempty"`
 }
 
 // CreateObjectParams defines parameters for CreateObject.
@@ -2859,6 +2892,18 @@ func NewListObjectsRequest(server string, params *ListObjectsParams) (*http.Requ
 
 		}
 
+		if params.Tag != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "tag", *params.Tag, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "array", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
 		if encoded := queryValues.Encode(); encoded != "" {
 			rawQueryFragments = append(rawQueryFragments, encoded)
 		}
@@ -4283,6 +4328,7 @@ type ListObjectsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *[]ObjectMetadata
+	JSON400      *BadRequest
 	JSON401      *Unauthorized
 }
 
@@ -5858,6 +5904,13 @@ func ParseListObjectsResponse(rsp *http.Response) (*ListObjectsResponse, error) 
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest Unauthorized
