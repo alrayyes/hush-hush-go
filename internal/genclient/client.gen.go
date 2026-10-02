@@ -65,6 +65,24 @@ func (e AuditLogEntryActorType) Valid() bool {
 	}
 }
 
+// Defines values for QueryAuditLogParamsOrder.
+const (
+	Asc  QueryAuditLogParamsOrder = "asc"
+	Desc QueryAuditLogParamsOrder = "desc"
+)
+
+// Valid indicates whether the value is a known member of the QueryAuditLogParamsOrder enum.
+func (e QueryAuditLogParamsOrder) Valid() bool {
+	switch e {
+	case Asc:
+		return true
+	case Desc:
+		return true
+	default:
+		return false
+	}
+}
+
 // AddConsumerRequest defines model for AddConsumerRequest.
 type AddConsumerRequest struct {
 	// Name The consumer's name. Rejected if it already appears in the directory.
@@ -628,9 +646,18 @@ type QueryAuditLogParams struct {
 	// (design.md's "Audit log UI" decision).
 	After *int64 `form:"after,omitempty" json:"after,omitempty"`
 
+	// Order Sort direction by entry id. `asc` (the default) is oldest
+	// first; `desc` is newest first, so combined with limit it
+	// returns the newest entries - `?object_id=x&order=desc&limit=3`
+	// is an object's three latest events.
+	Order *QueryAuditLogParamsOrder `form:"order,omitempty" json:"order,omitempty"`
+
 	// Limit Maximum entries to return. Defaults to 50, capped at 500.
 	Limit *int32 `form:"limit,omitempty" json:"limit,omitempty"`
 }
+
+// QueryAuditLogParamsOrder defines parameters for QueryAuditLog.
+type QueryAuditLogParamsOrder string
 
 // LogoutParams defines parameters for Logout.
 type LogoutParams struct {
@@ -1803,6 +1830,18 @@ func NewQueryAuditLogRequest(server string, params *QueryAuditLogParams) (*http.
 		if params.After != nil {
 
 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "after", *params.After, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: "int64"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Order != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "order", *params.Order, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
