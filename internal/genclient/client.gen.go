@@ -83,6 +83,27 @@ func (e ReadyStatus) Valid() bool {
 	}
 }
 
+// Defines values for TokenStatus.
+const (
+	Active  TokenStatus = "active"
+	Expired TokenStatus = "expired"
+	Revoked TokenStatus = "revoked"
+)
+
+// Valid indicates whether the value is a known member of the TokenStatus enum.
+func (e TokenStatus) Valid() bool {
+	switch e {
+	case Active:
+		return true
+	case Expired:
+		return true
+	case Revoked:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for QueryAuditLogParamsOrder.
 const (
 	Asc  QueryAuditLogParamsOrder = "asc"
@@ -209,28 +230,56 @@ type ConsumerTokenId = string
 
 // ConsumerTokenMetadata defines model for ConsumerTokenMetadata.
 type ConsumerTokenMetadata struct {
-	Consumer    string          `json:"consumer"`
-	CreatedAt   time.Time       `json:"created_at"`
-	Description string          `json:"description"`
-	ExpiresAt   time.Time       `json:"expires_at"`
-	Id          ConsumerTokenId `json:"id"`
+	// AllowedActions What may be done to the token in its current state: `rotate` and
+	// `revoke` while it is `active`, only `purge` once it is `expired` or
+	// `revoked`. The endpoints enforce the same rule themselves - a purge
+	// of an active token is still a 409 - so a client that acts on a stale
+	// view gets the server's answer. Hiding a button is cosmetic; this is
+	// what to show.
+	AllowedActions *TokenAllowedActions `json:"allowed_actions,omitempty"`
+	Consumer       string               `json:"consumer"`
+	CreatedAt      time.Time            `json:"created_at"`
+	Description    string               `json:"description"`
+	ExpiresAt      time.Time            `json:"expires_at"`
+	Id             ConsumerTokenId      `json:"id"`
 
 	// LastUsedAt Absent if this token has never authenticated a request.
 	LastUsedAt *time.Time `json:"last_used_at,omitempty"`
 	Revoked    bool       `json:"revoked"`
+
+	// Status What the token is right now, by the server's own clock: `revoked`
+	// if it was revoked (even if it has also expired), `expired` if its
+	// `expires_at` has passed, `active` otherwise. Always sent by this
+	// server; optional in the schema so a client generated from it still
+	// reads a response from an older one.
+	Status *TokenStatus `json:"status,omitempty"`
 }
 
 // ConsumerTokenWithValue defines model for ConsumerTokenWithValue.
 type ConsumerTokenWithValue struct {
-	Consumer    string          `json:"consumer"`
-	CreatedAt   time.Time       `json:"created_at"`
-	Description string          `json:"description"`
-	ExpiresAt   time.Time       `json:"expires_at"`
-	Id          ConsumerTokenId `json:"id"`
+	// AllowedActions What may be done to the token in its current state: `rotate` and
+	// `revoke` while it is `active`, only `purge` once it is `expired` or
+	// `revoked`. The endpoints enforce the same rule themselves - a purge
+	// of an active token is still a 409 - so a client that acts on a stale
+	// view gets the server's answer. Hiding a button is cosmetic; this is
+	// what to show.
+	AllowedActions *TokenAllowedActions `json:"allowed_actions,omitempty"`
+	Consumer       string               `json:"consumer"`
+	CreatedAt      time.Time            `json:"created_at"`
+	Description    string               `json:"description"`
+	ExpiresAt      time.Time            `json:"expires_at"`
+	Id             ConsumerTokenId      `json:"id"`
 
 	// LastUsedAt Absent if this token has never authenticated a request.
 	LastUsedAt *time.Time `json:"last_used_at,omitempty"`
 	Revoked    bool       `json:"revoked"`
+
+	// Status What the token is right now, by the server's own clock: `revoked`
+	// if it was revoked (even if it has also expired), `expired` if its
+	// `expires_at` has passed, `active` otherwise. Always sent by this
+	// server; optional in the schema so a client generated from it still
+	// reads a response from an older one.
+	Status *TokenStatus `json:"status,omitempty"`
 
 	// Value The raw consumer token. Shown here once, at creation, and
 	// never again.
@@ -546,15 +595,30 @@ type Tag = string
 // carries the array, empty when the object has none.
 type Tags = []Tag
 
+// TokenAllowedActions What may be done to the token in its current state: `rotate` and
+// `revoke` while it is `active`, only `purge` once it is `expired` or
+// `revoked`. The endpoints enforce the same rule themselves - a purge
+// of an active token is still a 409 - so a client that acts on a stale
+// view gets the server's answer. Hiding a button is cosmetic; this is
+// what to show.
+type TokenAllowedActions = []string
+
 // TokenId defines model for TokenId.
 type TokenId = string
 
 // TokenMetadata defines model for TokenMetadata.
 type TokenMetadata struct {
-	CreatedAt   time.Time `json:"created_at"`
-	Description string    `json:"description"`
-	ExpiresAt   time.Time `json:"expires_at"`
-	Id          TokenId   `json:"id"`
+	// AllowedActions What may be done to the token in its current state: `rotate` and
+	// `revoke` while it is `active`, only `purge` once it is `expired` or
+	// `revoked`. The endpoints enforce the same rule themselves - a purge
+	// of an active token is still a 409 - so a client that acts on a stale
+	// view gets the server's answer. Hiding a button is cosmetic; this is
+	// what to show.
+	AllowedActions *TokenAllowedActions `json:"allowed_actions,omitempty"`
+	CreatedAt      time.Time            `json:"created_at"`
+	Description    string               `json:"description"`
+	ExpiresAt      time.Time            `json:"expires_at"`
+	Id             TokenId              `json:"id"`
 
 	// LastUsedAt Absent if this token has never authenticated a request.
 	LastUsedAt *time.Time `json:"last_used_at,omitempty"`
@@ -564,14 +628,35 @@ type TokenMetadata struct {
 	// session to attribute to - never a guessed value.
 	Owner   *string `json:"owner,omitempty"`
 	Revoked bool    `json:"revoked"`
+
+	// Status What the token is right now, by the server's own clock: `revoked`
+	// if it was revoked (even if it has also expired), `expired` if its
+	// `expires_at` has passed, `active` otherwise. Always sent by this
+	// server; optional in the schema so a client generated from it still
+	// reads a response from an older one.
+	Status *TokenStatus `json:"status,omitempty"`
 }
+
+// TokenStatus What the token is right now, by the server's own clock: `revoked`
+// if it was revoked (even if it has also expired), `expired` if its
+// `expires_at` has passed, `active` otherwise. Always sent by this
+// server; optional in the schema so a client generated from it still
+// reads a response from an older one.
+type TokenStatus string
 
 // TokenWithValue defines model for TokenWithValue.
 type TokenWithValue struct {
-	CreatedAt   time.Time `json:"created_at"`
-	Description string    `json:"description"`
-	ExpiresAt   time.Time `json:"expires_at"`
-	Id          TokenId   `json:"id"`
+	// AllowedActions What may be done to the token in its current state: `rotate` and
+	// `revoke` while it is `active`, only `purge` once it is `expired` or
+	// `revoked`. The endpoints enforce the same rule themselves - a purge
+	// of an active token is still a 409 - so a client that acts on a stale
+	// view gets the server's answer. Hiding a button is cosmetic; this is
+	// what to show.
+	AllowedActions *TokenAllowedActions `json:"allowed_actions,omitempty"`
+	CreatedAt      time.Time            `json:"created_at"`
+	Description    string               `json:"description"`
+	ExpiresAt      time.Time            `json:"expires_at"`
+	Id             TokenId              `json:"id"`
 
 	// LastUsedAt Absent if this token has never authenticated a request.
 	LastUsedAt *time.Time `json:"last_used_at,omitempty"`
@@ -581,6 +666,13 @@ type TokenWithValue struct {
 	// session to attribute to - never a guessed value.
 	Owner   *string `json:"owner,omitempty"`
 	Revoked bool    `json:"revoked"`
+
+	// Status What the token is right now, by the server's own clock: `revoked`
+	// if it was revoked (even if it has also expired), `expired` if its
+	// `expires_at` has passed, `active` otherwise. Always sent by this
+	// server; optional in the schema so a client generated from it still
+	// reads a response from an older one.
+	Status *TokenStatus `json:"status,omitempty"`
 
 	// Value The raw bearer token. Shown here once, at creation, and
 	// never again - the same as a token issued via the `token`
