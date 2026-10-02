@@ -65,6 +65,24 @@ func (e AuditLogEntryActorType) Valid() bool {
 	}
 }
 
+// Defines values for ReadyStatus.
+const (
+	Ok          ReadyStatus = "ok"
+	Unavailable ReadyStatus = "unavailable"
+)
+
+// Valid indicates whether the value is a known member of the ReadyStatus enum.
+func (e ReadyStatus) Valid() bool {
+	switch e {
+	case Ok:
+		return true
+	case Unavailable:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for QueryAuditLogParamsOrder.
 const (
 	Asc  QueryAuditLogParamsOrder = "asc"
@@ -325,7 +343,14 @@ type Error struct {
 
 // Health defines model for Health.
 type Health struct {
-	Status string `json:"status"`
+	// Environment The operator's own short label for this instance, from the
+	// `INSTANCE_LABEL` setting - for example `prod / homelab`. The
+	// web UI's top bar shows it so an operator can tell instances
+	// apart. Omitted when no label is set. This endpoint is
+	// unauthenticated, so the label is public: never put anything
+	// sensitive in it.
+	Environment *string `json:"environment,omitempty"`
+	Status      string  `json:"status"`
 
 	// Version The running server's own version, as goreleaser stamped it -
 	// "dev" for a plain `go build`. The web UI's footer links this
@@ -424,6 +449,14 @@ type OwnerIdentity struct {
 	// first registration yet.
 	PublicKey *string `json:"public_key,omitempty"`
 }
+
+// Ready defines model for Ready.
+type Ready struct {
+	Status ReadyStatus `json:"status"`
+}
+
+// ReadyStatus defines model for Ready.Status.
+type ReadyStatus string
 
 // RegistrationFinishRequest defines model for RegistrationFinishRequest.
 type RegistrationFinishRequest struct {
@@ -1200,6 +1233,9 @@ type ClientInterface interface {
 	// GetObjectUsedBy request
 	GetObjectUsedBy(ctx context.Context, slug Slug, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// Ready request
+	Ready(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListTokens request
 	ListTokens(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -1678,6 +1714,18 @@ func (c *Client) UpdateObject(ctx context.Context, slug Slug, params *UpdateObje
 
 func (c *Client) GetObjectUsedBy(ctx context.Context, slug Slug, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetObjectUsedByRequest(c.Server, slug)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) Ready(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewReadyRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -3200,6 +3248,33 @@ func NewGetObjectUsedByRequest(server string, slug Slug) (*http.Request, error) 
 	return req, nil
 }
 
+// NewReadyRequest generates requests for Ready
+func NewReadyRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/readyz")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewListTokensRequest generates requests for ListTokens
 func NewListTokensRequest(server string) (*http.Request, error) {
 	var err error
@@ -3583,6 +3658,9 @@ type ClientWithResponsesInterface interface {
 
 	// GetObjectUsedByWithResponse request
 	GetObjectUsedByWithResponse(ctx context.Context, slug Slug, reqEditors ...RequestEditorFn) (*GetObjectUsedByResponse, error)
+
+	// ReadyWithResponse request
+	ReadyWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ReadyResponse, error)
 
 	// ListTokensWithResponse request
 	ListTokensWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListTokensResponse, error)
@@ -4513,6 +4591,37 @@ func (r GetObjectUsedByResponse) ContentType() string {
 	return ""
 }
 
+type ReadyResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *Ready
+	JSON503      *Ready
+}
+
+// Status returns HTTPResponse.Status
+func (r ReadyResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ReadyResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ReadyResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListTokensResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -5010,6 +5119,15 @@ func (c *ClientWithResponses) GetObjectUsedByWithResponse(ctx context.Context, s
 		return nil, err
 	}
 	return ParseGetObjectUsedByResponse(rsp)
+}
+
+// ReadyWithResponse request returning *ReadyResponse
+func (c *ClientWithResponses) ReadyWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ReadyResponse, error) {
+	rsp, err := c.Ready(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseReadyResponse(rsp)
 }
 
 // ListTokensWithResponse request returning *ListTokensResponse
@@ -6097,6 +6215,39 @@ func ParseGetObjectUsedByResponse(rsp *http.Response) (*GetObjectUsedByResponse,
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseReadyResponse parses an HTTP response from a ReadyWithResponse call
+func ParseReadyResponse(rsp *http.Response) (*ReadyResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ReadyResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Ready
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest Ready
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
 
 	}
 
