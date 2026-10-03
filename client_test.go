@@ -3,6 +3,7 @@ package hushhush_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -190,5 +191,74 @@ func TestClient_ListObjects_UsedByFilter(t *testing.T) {
 	}
 	if gotQuery != "used_by=homelab%2Fvps-docker" {
 		t.Errorf("query = %q, want a used_by filter, got %q", gotQuery, gotQuery)
+	}
+}
+
+func TestClient_GetOwnerIdentity(t *testing.T) {
+	var gotAuth, gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotAuth, gotPath = r.Header.Get("Authorization"), r.URL.Path
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"public_key":"age1ownerkey"}`))
+	}))
+	defer srv.Close()
+
+	client, err := hushhush.NewClient(srv.URL, hushhush.WithAPIKey("token"))
+	if err != nil {
+		t.Fatalf("NewClient: %v", err)
+	}
+
+	identity, err := client.GetOwnerIdentity(context.Background())
+	if err != nil {
+		t.Fatalf("GetOwnerIdentity: %v", err)
+	}
+	if gotPath != "/auth/identity" || gotAuth != "Bearer token" {
+		t.Errorf("request = %s with Authorization %q, want /auth/identity with the bearer token", gotPath, gotAuth)
+	}
+	if identity.PublicKey == nil || *identity.PublicKey != "age1ownerkey" {
+		t.Errorf("PublicKey = %v, want age1ownerkey", identity.PublicKey)
+	}
+}
+
+// An owner who hasn't completed a first registration has no escrowed key
+// yet. The server answers 200 with the field absent, not an error, so the
+// caller can tell "nothing to add" from "request failed".
+func TestClient_GetOwnerIdentity_NoEscrowedKeyYet(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{}`))
+	}))
+	defer srv.Close()
+
+	client, err := hushhush.NewClient(srv.URL, hushhush.WithAPIKey("token"))
+	if err != nil {
+		t.Fatalf("NewClient: %v", err)
+	}
+	identity, err := client.GetOwnerIdentity(context.Background())
+	if err != nil {
+		t.Fatalf("GetOwnerIdentity: %v", err)
+	}
+	if identity.PublicKey != nil {
+		t.Errorf("PublicKey = %q, want nil", *identity.PublicKey)
+	}
+}
+
+func TestClient_GetOwnerIdentity_Unauthorized(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+		_ = json.NewEncoder(w).Encode(hushhush.Error{Error: "missing or invalid bearer token or session"})
+	}))
+	defer srv.Close()
+
+	client, err := hushhush.NewClient(srv.URL)
+	if err != nil {
+		t.Fatalf("NewClient: %v", err)
+	}
+	_, err = client.GetOwnerIdentity(context.Background())
+	var apiErr *hushhush.APIError
+	if !errors.As(err, &apiErr) || apiErr.StatusCode != http.StatusUnauthorized {
+		t.Errorf("err = %v, want an *APIError with status 401", err)
 	}
 }

@@ -97,6 +97,17 @@ func TestContract_CreateGetDeleteObject(t *testing.T) {
 	}
 }
 
+func TestContract_GetOwnerIdentity(t *testing.T) {
+	client := mustClient(t)
+	identity, err := client.GetOwnerIdentity(context.Background())
+	if err != nil {
+		t.Fatalf("GetOwnerIdentity: %v", err)
+	}
+	if identity == nil {
+		t.Fatal("identity is nil, want the mock spec's example")
+	}
+}
+
 func TestContract_QueryAuditLog(t *testing.T) {
 	client := mustClient(t)
 	if _, err := client.QueryAuditLog(context.Background(), hushhush.AuditLogFilter{}); err != nil {
