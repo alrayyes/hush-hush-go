@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.3.1](https://github.com/alrayyes/hush-hush-go/compare/v4.3.0...v4.3.1) (2026-10-03)
+
+
+### Bug Fixes
+
+* regenerate client from updated hush-hush spec ([#208](https://github.com/alrayyes/hush-hush-go/issues/208)) ([a4cacd1](https://github.com/alrayyes/hush-hush-go/commit/a4cacd190596ab51d864d1d57bd1f1eb4a096ca5))
+
 ## [4.3.0](https://github.com/alrayyes/hush-hush-go/compare/v4.2.6...v4.3.0) (2026-10-03)
 
 
