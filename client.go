@@ -220,6 +220,17 @@ func (c *Client) GetObjectUsedBy(ctx context.Context, id string) (*UsedBy, error
 	return resp.JSON200, nil
 }
 
+// ListObjectsFilter narrows a ListObjectsFiltered call. The zero value asks
+// for every object, the same as ListObjects with an empty usedBy.
+type ListObjectsFilter struct {
+	// UsedBy restricts to objects whose recorded used_by lineage includes
+	// this consumer. "" means no filter.
+	UsedBy string
+	// Tags restricts to objects carrying every one of these tags (all must
+	// match, case-insensitive). Empty means no filter.
+	Tags []string
+}
+
 // ListObjects returns every stored object's metadata (id, used_by,
 // description — never the sealed value), optionally narrowed to objects
 // whose recorded used_by lineage includes usedBy ("" means no filter).
@@ -227,10 +238,24 @@ func (c *Client) GetObjectUsedBy(ctx context.Context, id string) (*UsedBy, error
 // id-scoped read only discloses what the caller already knows the id of,
 // but enumerating every object is a capability none of those grant on
 // their own.
+//
+// To filter by tag as well, use ListObjectsFiltered.
 func (c *Client) ListObjects(ctx context.Context, usedBy string) ([]ObjectMetadata, error) {
+	return c.ListObjectsFiltered(ctx, ListObjectsFilter{UsedBy: usedBy})
+}
+
+// ListObjectsFiltered is ListObjects with the full set of GET /objects
+// filters: used_by and tag. It requires a credential for the same reason.
+// Tags are sent as a repeated query parameter and an object must carry every
+// one, so listing by [prod] returns the prod objects and listing by
+// [prod, ci] only those carrying both.
+func (c *Client) ListObjectsFiltered(ctx context.Context, filter ListObjectsFilter) ([]ObjectMetadata, error) {
 	params := &genclient.ListObjectsParams{}
-	if usedBy != "" {
-		params.UsedBy = &usedBy
+	if filter.UsedBy != "" {
+		params.UsedBy = &filter.UsedBy
+	}
+	if len(filter.Tags) > 0 {
+		params.Tag = &filter.Tags
 	}
 	resp, err := c.api.ListObjectsWithResponse(ctx, params, c.authEditor)
 	if err != nil {

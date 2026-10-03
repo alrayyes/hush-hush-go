@@ -115,6 +115,15 @@ func TestContract_QueryAuditLog(t *testing.T) {
 	}
 }
 
+func TestContract_ListObjectsFiltered_ByTags(t *testing.T) {
+	// Prism validates the request against the pinned spec, so this proves a
+	// repeated tag parameter is one hush-hush's spec accepts.
+	client := mustClient(t)
+	if _, err := client.ListObjectsFiltered(context.Background(), hushhush.ListObjectsFilter{Tags: []string{"prod", "ci"}}); err != nil {
+		t.Fatalf("ListObjectsFiltered: %v", err)
+	}
+}
+
 func TestContract_ListConsumers_PlainList(t *testing.T) {
 	client := mustClient(t)
 	result, err := client.ListConsumers(context.Background(), hushhush.ConsumerFilter{})
