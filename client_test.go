@@ -6,6 +6,8 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"reflect"
 	"testing"
 
 	hushhush "github.com/alrayyes/hush-hush-go/v4"
@@ -257,6 +259,65 @@ func TestClient_GetOwnerIdentity_Unauthorized(t *testing.T) {
 		t.Fatalf("NewClient: %v", err)
 	}
 	_, err = client.GetOwnerIdentity(context.Background())
+	var apiErr *hushhush.APIError
+	if !errors.As(err, &apiErr) || apiErr.StatusCode != http.StatusUnauthorized {
+		t.Errorf("err = %v, want an *APIError with status 401", err)
+	}
+}
+
+func TestClient_ListObjectsFiltered_TagFilter(t *testing.T) {
+	tests := []struct {
+		name   string
+		filter hushhush.ListObjectsFilter
+		want   url.Values
+	}{
+		{"one tag", hushhush.ListObjectsFilter{Tags: []string{"prod"}}, url.Values{"tag": {"prod"}}},
+		{"every tag must match, sent as a repeated parameter", hushhush.ListObjectsFilter{Tags: []string{"prod", "ci"}}, url.Values{"tag": {"prod", "ci"}}},
+		{"alongside used_by", hushhush.ListObjectsFilter{UsedBy: "homelab/vps", Tags: []string{"prod"}}, url.Values{"tag": {"prod"}, "used_by": {"homelab/vps"}}},
+		{"empty filter sends nothing", hushhush.ListObjectsFilter{}, url.Values{}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var gotQuery url.Values
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				gotQuery = r.URL.Query()
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode([]hushhush.ObjectMetadata{{Slug: "obj-1"}})
+			}))
+			defer srv.Close()
+
+			client, err := hushhush.NewClient(srv.URL, hushhush.WithAPIKey("token"))
+			if err != nil {
+				t.Fatalf("NewClient: %v", err)
+			}
+
+			objects, err := client.ListObjectsFiltered(context.Background(), tt.filter)
+			if err != nil {
+				t.Fatalf("ListObjectsFiltered: %v", err)
+			}
+			if !reflect.DeepEqual(gotQuery, tt.want) {
+				t.Errorf("query = %v, want %v", gotQuery, tt.want)
+			}
+			if len(objects) != 1 || objects[0].Slug != "obj-1" {
+				t.Errorf("objects = %+v, want one entry for obj-1", objects)
+			}
+		})
+	}
+}
+
+func TestClient_ListObjectsFiltered_RequiresCredential(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+		_ = json.NewEncoder(w).Encode(hushhush.Error{Error: "missing or invalid bearer token"})
+	}))
+	defer srv.Close()
+
+	client, err := hushhush.NewClient(srv.URL)
+	if err != nil {
+		t.Fatalf("NewClient: %v", err)
+	}
+	_, err = client.ListObjectsFiltered(context.Background(), hushhush.ListObjectsFilter{Tags: []string{"prod"}})
 	var apiErr *hushhush.APIError
 	if !errors.As(err, &apiErr) || apiErr.StatusCode != http.StatusUnauthorized {
 		t.Errorf("err = %v, want an *APIError with status 401", err)
