@@ -1,5 +1,14 @@
 # Changelog
 
+## [4.3.0](https://github.com/alrayyes/hush-hush-go/compare/v4.2.6...v4.3.0) (2026-10-03)
+
+
+### Features
+
+* add GetOwnerIdentity so keep_readable_copy is usable ([4d53581](https://github.com/alrayyes/hush-hush-go/commit/4d535817485087d3d3f9d83faecfb664d6db61f9))
+* let ListObjects filter by tag ([b208da9](https://github.com/alrayyes/hush-hush-go/commit/b208da9ec2d1f06ddf8d7ee2abb158bd1c62f9cc))
+* let ListObjects filter by tag ([fe29550](https://github.com/alrayyes/hush-hush-go/commit/fe29550e3c18a011ebb1c135cd89c5a3687247b3)), closes [#197](https://github.com/alrayyes/hush-hush-go/issues/197)
+
 ## [4.2.6](https://github.com/alrayyes/hush-hush-go/compare/v4.2.5...v4.2.6) (2026-10-03)
 
 
