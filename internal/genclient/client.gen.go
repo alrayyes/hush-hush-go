@@ -306,8 +306,17 @@ type CreateConsumerTokenRequest struct {
 	Consumer    string `json:"consumer"`
 	Description string `json:"description"`
 
-	// TtlSeconds How long the token stays valid for, starting now.
-	TtlSeconds int64 `json:"ttl_seconds"`
+	// TtlSeconds How long a token stays valid for, starting now. The default is 90
+	// days (7776000), and the cap is 365 days (31536000): a longer
+	// lifetime is a 422 that names the limit. A zero or negative value is
+	// a 400. The cap applies when a token is minted or rotated; a token
+	// issued before it existed keeps working until it expires.
+	//
+	// The field stays `required` so generated clients keep a plain
+	// integer rather than an optional one, which would change their types
+	// for a limit they don't need. A request that leaves it out anyway is
+	// given the default rather than rejected.
+	TtlSeconds TokenTtlSeconds `json:"ttl_seconds"`
 }
 
 // CreateObjectRequest defines model for CreateObjectRequest.
@@ -353,7 +362,9 @@ type CreateObjectRequest struct {
 	// that omits it leaves the list as it was.
 	UsedBy *UsedByList `json:"used_by,omitempty"`
 
-	// Value The sealed (encrypted) value, base64-encoded.
+	// Value The sealed (encrypted) value, base64-encoded. It has to be a
+	// well-formed age file naming at least one recipient; the
+	// service reads only its header, never the payload.
 	Value []byte `json:"value"`
 }
 
@@ -361,8 +372,17 @@ type CreateObjectRequest struct {
 type CreateTokenRequest struct {
 	Description string `json:"description"`
 
-	// TtlSeconds How long the token stays valid for, starting now.
-	TtlSeconds int64 `json:"ttl_seconds"`
+	// TtlSeconds How long a token stays valid for, starting now. The default is 90
+	// days (7776000), and the cap is 365 days (31536000): a longer
+	// lifetime is a 422 that names the limit. A zero or negative value is
+	// a 400. The cap applies when a token is minted or rotated; a token
+	// issued before it existed keeps working until it expires.
+	//
+	// The field stays `required` so generated clients keep a plain
+	// integer rather than an optional one, which would change their types
+	// for a limit they don't need. A request that leaves it out anyway is
+	// given the default rather than rejected.
+	TtlSeconds TokenTtlSeconds `json:"ttl_seconds"`
 }
 
 // Credential defines model for Credential.
@@ -575,14 +595,32 @@ type RegistrationOptions map[string]interface{}
 
 // RotateConsumerTokenRequest defines model for RotateConsumerTokenRequest.
 type RotateConsumerTokenRequest struct {
-	// TtlSeconds How long the rotated token stays valid for, starting now.
-	TtlSeconds int64 `json:"ttl_seconds"`
+	// TtlSeconds How long a token stays valid for, starting now. The default is 90
+	// days (7776000), and the cap is 365 days (31536000): a longer
+	// lifetime is a 422 that names the limit. A zero or negative value is
+	// a 400. The cap applies when a token is minted or rotated; a token
+	// issued before it existed keeps working until it expires.
+	//
+	// The field stays `required` so generated clients keep a plain
+	// integer rather than an optional one, which would change their types
+	// for a limit they don't need. A request that leaves it out anyway is
+	// given the default rather than rejected.
+	TtlSeconds TokenTtlSeconds `json:"ttl_seconds"`
 }
 
 // RotateTokenRequest defines model for RotateTokenRequest.
 type RotateTokenRequest struct {
-	// TtlSeconds How long the rotated token stays valid for, starting now.
-	TtlSeconds int64 `json:"ttl_seconds"`
+	// TtlSeconds How long a token stays valid for, starting now. The default is 90
+	// days (7776000), and the cap is 365 days (31536000): a longer
+	// lifetime is a 422 that names the limit. A zero or negative value is
+	// a 400. The cap applies when a token is minted or rotated; a token
+	// issued before it existed keeps working until it expires.
+	//
+	// The field stays `required` so generated clients keep a plain
+	// integer rather than an optional one, which would change their types
+	// for a limit they don't need. A request that leaves it out anyway is
+	// given the default rather than rejected.
+	TtlSeconds TokenTtlSeconds `json:"ttl_seconds"`
 }
 
 // Tag defines model for Tag.
@@ -643,6 +681,18 @@ type TokenMetadata struct {
 // server; optional in the schema so a client generated from it still
 // reads a response from an older one.
 type TokenStatus string
+
+// TokenTtlSeconds How long a token stays valid for, starting now. The default is 90
+// days (7776000), and the cap is 365 days (31536000): a longer
+// lifetime is a 422 that names the limit. A zero or negative value is
+// a 400. The cap applies when a token is minted or rotated; a token
+// issued before it existed keeps working until it expires.
+//
+// The field stays `required` so generated clients keep a plain
+// integer rather than an optional one, which would change their types
+// for a limit they don't need. A request that leaves it out anyway is
+// given the default rather than rejected.
+type TokenTtlSeconds = int64
 
 // TokenWithValue defines model for TokenWithValue.
 type TokenWithValue struct {
@@ -732,7 +782,9 @@ type UpdateObjectRequest struct {
 	// empty array clears it.
 	UsedBy *UsedByList `json:"used_by,omitempty"`
 
-	// Value The new sealed (encrypted) value, base64-encoded.
+	// Value The new sealed (encrypted) value, base64-encoded. It has to be
+	// a well-formed age file naming at least one recipient; the
+	// service reads only its header, never the payload.
 	Value []byte `json:"value"`
 }
 
@@ -787,6 +839,9 @@ type Unauthorized = Error
 
 // UnknownConsumer defines model for UnknownConsumer.
 type UnknownConsumer = Error
+
+// UnprocessableEntity defines model for UnprocessableEntity.
+type UnprocessableEntity = Error
 
 // bearerAuthContextKey is the context key for bearerAuth security scheme
 type bearerAuthContextKey string
@@ -4116,6 +4171,7 @@ type CreateConsumerTokenResponse struct {
 	JSON201      *ConsumerTokenWithValue
 	JSON400      *BadRequest
 	JSON401      *Unauthorized
+	JSON422      *UnprocessableEntity
 }
 
 // Status returns HTTPResponse.Status
@@ -4211,6 +4267,7 @@ type RotateConsumerTokenResponse struct {
 	JSON400      *BadRequest
 	JSON401      *Unauthorized
 	JSON404      *NotFound
+	JSON422      *UnprocessableEntity
 }
 
 // Status returns HTTPResponse.Status
@@ -4560,6 +4617,7 @@ type CreateObjectResponse struct {
 	JSON201      *ObjectMetadata
 	JSON401      *Unauthorized
 	JSON409      *Error
+	JSON422      *UnprocessableEntity
 }
 
 // Status returns HTTPResponse.Status
@@ -4654,6 +4712,7 @@ type UpdateObjectResponse struct {
 	JSON200      *ObjectMetadata
 	JSON401      *Unauthorized
 	JSON404      *NotFound
+	JSON422      *UnprocessableEntity
 }
 
 // Status returns HTTPResponse.Status
@@ -4779,6 +4838,7 @@ type CreateTokenResponse struct {
 	JSON201      *TokenWithValue
 	JSON400      *BadRequest
 	JSON401      *Unauthorized
+	JSON422      *UnprocessableEntity
 }
 
 // Status returns HTTPResponse.Status
@@ -4874,6 +4934,7 @@ type RotateTokenResponse struct {
 	JSON400      *BadRequest
 	JSON401      *Unauthorized
 	JSON404      *NotFound
+	JSON422      *UnprocessableEntity
 }
 
 // Status returns HTTPResponse.Status
@@ -5662,6 +5723,13 @@ func ParseCreateConsumerTokenResponse(rsp *http.Response) (*CreateConsumerTokenR
 		}
 		response.JSON401 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
 	}
 
 	return response, nil
@@ -5774,6 +5842,13 @@ func ParseRotateConsumerTokenResponse(rsp *http.Response) (*RotateConsumerTokenR
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
 
 	}
 
@@ -6197,6 +6272,13 @@ func ParseCreateObjectResponse(rsp *http.Response) (*CreateObjectResponse, error
 		}
 		response.JSON409 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
 	}
 
 	return response, nil
@@ -6302,6 +6384,13 @@ func ParseUpdateObjectResponse(rsp *http.Response) (*UpdateObjectResponse, error
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
 
 	}
 
@@ -6442,6 +6531,13 @@ func ParseCreateTokenResponse(rsp *http.Response) (*CreateTokenResponse, error) 
 		}
 		response.JSON401 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
 	}
 
 	return response, nil
@@ -6554,6 +6650,13 @@ func ParseRotateTokenResponse(rsp *http.Response) (*RotateTokenResponse, error) 
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
 
 	}
 
