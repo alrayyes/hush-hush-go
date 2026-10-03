@@ -44,6 +44,8 @@ type (
 	Health = genclient.Health
 	// AuthStatus is returned by Client.AuthStatus.
 	AuthStatus = genclient.AuthStatus
+	// OwnerIdentity is returned by Client.GetOwnerIdentity.
+	OwnerIdentity = genclient.OwnerIdentity
 	// AuditLogEntry is one entry returned by QueryAuditLog.
 	AuditLogEntry = genclient.AuditLogEntry
 	// AuditLogEntryAction is an AuditLogEntry's recorded action — see the
