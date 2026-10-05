@@ -932,10 +932,10 @@ type LogoutParams struct {
 
 // ListConsumerTokensParams defines parameters for ListConsumerTokens.
 type ListConsumerTokensParams struct {
-	// Limit How many rows to return. Give `limit`, `offset` or both to get one page; give neither and the response is every row. `X-Total-Count` says how many there are in all.
+	// Limit How many rows to return, at most. A list is one page: 50 rows when `limit` is left out. `X-Total-Count` says how many there are in all, so read the rest by asking for the next `offset`.
 	Limit *PageLimit `form:"limit,omitempty" json:"limit,omitempty"`
 
-	// Offset How many rows to skip. With `limit` left out, a page is 50 rows.
+	// Offset How many rows to skip. Add the number of rows you got to read the next page.
 	Offset *PageOffset `form:"offset,omitempty" json:"offset,omitempty"`
 }
 
@@ -1031,10 +1031,10 @@ type UpdateConsumerParams struct {
 
 // ListCredentialsParams defines parameters for ListCredentials.
 type ListCredentialsParams struct {
-	// Limit How many rows to return. Give `limit`, `offset` or both to get one page; give neither and the response is every row. `X-Total-Count` says how many there are in all.
+	// Limit How many rows to return, at most. A list is one page: 50 rows when `limit` is left out. `X-Total-Count` says how many there are in all, so read the rest by asking for the next `offset`.
 	Limit *PageLimit `form:"limit,omitempty" json:"limit,omitempty"`
 
-	// Offset How many rows to skip. With `limit` left out, a page is 50 rows.
+	// Offset How many rows to skip. Add the number of rows you got to read the next page.
 	Offset *PageOffset `form:"offset,omitempty" json:"offset,omitempty"`
 }
 
@@ -1071,10 +1071,10 @@ type ListObjectsParams struct {
 	// case-insensitively.
 	Tag *[]Tag `form:"tag,omitempty" json:"tag,omitempty"`
 
-	// Limit How many rows to return. Give `limit`, `offset` or both to get one page; give neither and the response is every row. `X-Total-Count` says how many there are in all.
+	// Limit How many rows to return, at most. A list is one page: 50 rows when `limit` is left out. `X-Total-Count` says how many there are in all, so read the rest by asking for the next `offset`.
 	Limit *PageLimit `form:"limit,omitempty" json:"limit,omitempty"`
 
-	// Offset How many rows to skip. With `limit` left out, a page is 50 rows.
+	// Offset How many rows to skip. Add the number of rows you got to read the next page.
 	Offset *PageOffset `form:"offset,omitempty" json:"offset,omitempty"`
 }
 
@@ -1156,10 +1156,10 @@ type GetObjectUsedByParams struct {
 
 // ListTokensParams defines parameters for ListTokens.
 type ListTokensParams struct {
-	// Limit How many rows to return. Give `limit`, `offset` or both to get one page; give neither and the response is every row. `X-Total-Count` says how many there are in all.
+	// Limit How many rows to return, at most. A list is one page: 50 rows when `limit` is left out. `X-Total-Count` says how many there are in all, so read the rest by asking for the next `offset`.
 	Limit *PageLimit `form:"limit,omitempty" json:"limit,omitempty"`
 
-	// Offset How many rows to skip. With `limit` left out, a page is 50 rows.
+	// Offset How many rows to skip. Add the number of rows you got to read the next page.
 	Offset *PageOffset `form:"offset,omitempty" json:"offset,omitempty"`
 }
 
