@@ -23,16 +23,21 @@ func (c *Client) CreateConsumerToken(ctx context.Context, req CreateConsumerToke
 
 // ListConsumerTokens returns every issued consumer token's metadata —
 // never a raw value, which by design no longer exists anywhere to return
-// once a token is created. Requires a credential.
+// once a token is created. Requires a credential. The list is read a page
+// of 500 at a time and returned whole, so it stays complete however many
+// tokens there are.
 func (c *Client) ListConsumerTokens(ctx context.Context) ([]ConsumerTokenMetadata, error) {
-	resp, err := c.api.ListConsumerTokensWithResponse(ctx, &genclient.ListConsumerTokensParams{}, c.authEditor)
-	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode() != http.StatusOK || resp.JSON200 == nil {
-		return nil, newAPIError(resp.StatusCode(), resp.HTTPResponse.Header, resp.Body)
-	}
-	return *resp.JSON200, nil
+	return readAllPages(ctx, func(ctx context.Context, limit, offset int32) (page[ConsumerTokenMetadata], error) {
+		resp, err := c.api.ListConsumerTokensWithResponse(ctx, &genclient.ListConsumerTokensParams{Limit: &limit, Offset: &offset}, c.authEditor)
+		if err != nil {
+			return page[ConsumerTokenMetadata]{}, err
+		}
+		if resp.StatusCode() != http.StatusOK || resp.JSON200 == nil {
+			return page[ConsumerTokenMetadata]{}, newAPIError(resp.StatusCode(), resp.HTTPResponse.Header, resp.Body)
+		}
+		total, hasTotal := totalCount(resp.HTTPResponse.Header)
+		return page[ConsumerTokenMetadata]{rows: *resp.JSON200, total: total, hasTotal: hasTotal}, nil
+	})
 }
 
 // RotateConsumerToken replaces the secret and expiry of the consumer token

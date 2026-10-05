@@ -77,9 +77,10 @@ consumer directory (`ListConsumers`, `AddConsumer`, `UpdateConsumer`,
 `DeleteConsumer`, and `GetConsumerPublicKey` for resolving one consumer's
 registered age public key by exact name) always requires a credential, the
 same as `ListObjects` — listing needs no ID the caller already holds.
-`ListObjects` narrows by consumer; `ListObjectsFiltered` takes a
-`ListObjectsFilter` to narrow by tag too, where an object must carry every tag
-listed.
+Both list calls read the server a page of 500 at a time and return the whole
+list, so nothing is cut off however many objects there are. `ListObjects`
+narrows by consumer; `ListObjectsFiltered` takes a `ListObjectsFilter` to
+narrow by tag too, where an object must carry every tag listed.
 `GetOwnerIdentity` returns the owner's escrowed public key, which a client adds
 as a recipient before sealing to honor `keep_readable_copy`; it works with an
 API key and needs hush-hush v2.54.0 or later.

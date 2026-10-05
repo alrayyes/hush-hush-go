@@ -191,8 +191,9 @@ func TestClient_ListObjects_UsedByFilter(t *testing.T) {
 	if _, err := client.ListObjects(context.Background(), "homelab/vps-docker"); err != nil {
 		t.Fatalf("ListObjects: %v", err)
 	}
-	if gotQuery != "used_by=homelab%2Fvps-docker" {
-		t.Errorf("query = %q, want a used_by filter, got %q", gotQuery, gotQuery)
+	// The list is read a page at a time, so the paging parameters ride along.
+	if want := "used_by=homelab%2Fvps-docker&limit=500&offset=0"; gotQuery != want {
+		t.Errorf("query = %q, want %q", gotQuery, want)
 	}
 }
 
@@ -274,13 +275,16 @@ func TestClient_ListObjectsFiltered_TagFilter(t *testing.T) {
 		{"one tag", hushhush.ListObjectsFilter{Tags: []string{"prod"}}, url.Values{"tag": {"prod"}}},
 		{"every tag must match, sent as a repeated parameter", hushhush.ListObjectsFilter{Tags: []string{"prod", "ci"}}, url.Values{"tag": {"prod", "ci"}}},
 		{"alongside used_by", hushhush.ListObjectsFilter{UsedBy: "homelab/vps", Tags: []string{"prod"}}, url.Values{"tag": {"prod"}, "used_by": {"homelab/vps"}}},
-		{"empty filter sends nothing", hushhush.ListObjectsFilter{}, url.Values{}},
+		{"empty filter sends no filter", hushhush.ListObjectsFilter{}, url.Values{}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var gotQuery url.Values
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				gotQuery = r.URL.Query()
+				// The paging parameters are checked in list_pages_test.go.
+				gotQuery.Del("limit")
+				gotQuery.Del("offset")
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusOK)
 				_ = json.NewEncoder(w).Encode([]hushhush.ObjectMetadata{{Slug: "obj-1"}})
