@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.4.0](https://github.com/alrayyes/hush-hush-go/compare/v4.3.8...v4.4.0) (2026-10-05)
+
+
+### Features
+
+* read every page of the object and consumer token lists ([558851f](https://github.com/alrayyes/hush-hush-go/commit/558851f54a45ed6ef214225c1b40f73f4ce8d822))
+
 ## [4.3.8](https://github.com/alrayyes/hush-hush-go/compare/v4.3.7...v4.3.8) (2026-10-05)
 
 
