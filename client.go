@@ -210,7 +210,8 @@ func (c *Client) DeleteObject(ctx context.Context, id string, caller string) err
 // GetObjectUsedBy returns the recorded list of consumers for an object. No
 // credential is required.
 func (c *Client) GetObjectUsedBy(ctx context.Context, id string) (*UsedBy, error) {
-	resp, err := c.api.GetObjectUsedByWithResponse(ctx, id, c.authEditor)
+	// No variant id: a name with one variant is addressed as it always was.
+	resp, err := c.api.GetObjectUsedByWithResponse(ctx, id, &genclient.GetObjectUsedByParams{}, c.authEditor)
 	if err != nil {
 		return nil, err
 	}
