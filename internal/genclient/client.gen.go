@@ -364,7 +364,8 @@ type CreateObjectRequest struct {
 
 	// Value The sealed (encrypted) value, base64-encoded. It has to be a
 	// well-formed age file naming at least one recipient; the
-	// service reads only its header, never the payload.
+	// service reads only its header, never the payload. At most 1 MiB
+	// once decoded.
 	Value []byte `json:"value"`
 }
 
@@ -784,7 +785,8 @@ type UpdateObjectRequest struct {
 
 	// Value The new sealed (encrypted) value, base64-encoded. It has to be
 	// a well-formed age file naming at least one recipient; the
-	// service reads only its header, never the payload.
+	// service reads only its header, never the payload. At most 1 MiB
+	// once decoded.
 	Value []byte `json:"value"`
 }
 
@@ -830,6 +832,9 @@ type ConsumerAlreadyExists = Error
 
 // NotFound defines model for NotFound.
 type NotFound = Error
+
+// PayloadTooLarge defines model for PayloadTooLarge.
+type PayloadTooLarge = Error
 
 // TokenStillActive defines model for TokenStillActive.
 type TokenStillActive = Error
@@ -3954,6 +3959,7 @@ type BeginLoginResponse struct {
 	HTTPResponse *http.Response
 	JSON200      *LoginOptions
 	JSON400      *Error
+	JSON413      *PayloadTooLarge
 }
 
 // Status returns HTTPResponse.Status
@@ -3984,6 +3990,7 @@ type FinishLoginResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON401      *Unauthorized
+	JSON413      *PayloadTooLarge
 }
 
 // Status returns HTTPResponse.Status
@@ -4046,6 +4053,7 @@ type BeginRegistrationResponse struct {
 	JSON200      *RegistrationOptions
 	JSON400      *BadRequest
 	JSON401      *Unauthorized
+	JSON413      *PayloadTooLarge
 }
 
 // Status returns HTTPResponse.Status
@@ -4078,6 +4086,7 @@ type FinishRegistrationResponse struct {
 	JSON201      *Credential
 	JSON400      *BadRequest
 	JSON401      *Unauthorized
+	JSON413      *PayloadTooLarge
 }
 
 // Status returns HTTPResponse.Status
@@ -4171,6 +4180,7 @@ type CreateConsumerTokenResponse struct {
 	JSON201      *ConsumerTokenWithValue
 	JSON400      *BadRequest
 	JSON401      *Unauthorized
+	JSON413      *PayloadTooLarge
 	JSON422      *UnprocessableEntity
 }
 
@@ -4267,6 +4277,7 @@ type RotateConsumerTokenResponse struct {
 	JSON400      *BadRequest
 	JSON401      *Unauthorized
 	JSON404      *NotFound
+	JSON413      *PayloadTooLarge
 	JSON422      *UnprocessableEntity
 }
 
@@ -4333,6 +4344,7 @@ type AddConsumerResponse struct {
 	JSON400      *BadRequest
 	JSON401      *Unauthorized
 	JSON409      *ConsumerAlreadyExists
+	JSON413      *PayloadTooLarge
 }
 
 // Status returns HTTPResponse.Status
@@ -4397,6 +4409,7 @@ type UpdateConsumerResponse struct {
 	JSON400      *BadRequest
 	JSON401      *Unauthorized
 	JSON404      *UnknownConsumer
+	JSON413      *PayloadTooLarge
 }
 
 // Status returns HTTPResponse.Status
@@ -4492,6 +4505,7 @@ type RenameCredentialResponse struct {
 	JSON200      *Credential
 	JSON401      *Unauthorized
 	JSON404      *NotFound
+	JSON413      *PayloadTooLarge
 }
 
 // Status returns HTTPResponse.Status
@@ -4553,6 +4567,7 @@ type McpResponse struct {
 	HTTPResponse *http.Response
 	JSON200      *map[string]interface{}
 	JSON401      *Unauthorized
+	JSON413      *PayloadTooLarge
 }
 
 // Status returns HTTPResponse.Status
@@ -4617,6 +4632,7 @@ type CreateObjectResponse struct {
 	JSON201      *ObjectMetadata
 	JSON401      *Unauthorized
 	JSON409      *Error
+	JSON413      *PayloadTooLarge
 	JSON422      *UnprocessableEntity
 }
 
@@ -4712,6 +4728,7 @@ type UpdateObjectResponse struct {
 	JSON200      *ObjectMetadata
 	JSON401      *Unauthorized
 	JSON404      *NotFound
+	JSON413      *PayloadTooLarge
 	JSON422      *UnprocessableEntity
 }
 
@@ -4838,6 +4855,7 @@ type CreateTokenResponse struct {
 	JSON201      *TokenWithValue
 	JSON400      *BadRequest
 	JSON401      *Unauthorized
+	JSON413      *PayloadTooLarge
 	JSON422      *UnprocessableEntity
 }
 
@@ -4934,6 +4952,7 @@ type RotateTokenResponse struct {
 	JSON400      *BadRequest
 	JSON401      *Unauthorized
 	JSON404      *NotFound
+	JSON413      *PayloadTooLarge
 	JSON422      *UnprocessableEntity
 }
 
@@ -5492,6 +5511,13 @@ func ParseBeginLoginResponse(rsp *http.Response) (*BeginLoginResponse, error) {
 		}
 		response.JSON400 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 413:
+		var dest PayloadTooLarge
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON413 = &dest
+
 	}
 
 	return response, nil
@@ -5517,6 +5543,13 @@ func ParseFinishLoginResponse(rsp *http.Response) (*FinishLoginResponse, error) 
 			return nil, err
 		}
 		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 413:
+		var dest PayloadTooLarge
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON413 = &dest
 
 	}
 
@@ -5584,6 +5617,13 @@ func ParseBeginRegistrationResponse(rsp *http.Response) (*BeginRegistrationRespo
 		}
 		response.JSON401 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 413:
+		var dest PayloadTooLarge
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON413 = &dest
+
 	}
 
 	return response, nil
@@ -5623,6 +5663,13 @@ func ParseFinishRegistrationResponse(rsp *http.Response) (*FinishRegistrationRes
 			return nil, err
 		}
 		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 413:
+		var dest PayloadTooLarge
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON413 = &dest
 
 	}
 
@@ -5722,6 +5769,13 @@ func ParseCreateConsumerTokenResponse(rsp *http.Response) (*CreateConsumerTokenR
 			return nil, err
 		}
 		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 413:
+		var dest PayloadTooLarge
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON413 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
 		var dest UnprocessableEntity
@@ -5843,6 +5897,13 @@ func ParseRotateConsumerTokenResponse(rsp *http.Response) (*RotateConsumerTokenR
 		}
 		response.JSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 413:
+		var dest PayloadTooLarge
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON413 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
 		var dest UnprocessableEntity
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -5937,6 +5998,13 @@ func ParseAddConsumerResponse(rsp *http.Response) (*AddConsumerResponse, error) 
 		}
 		response.JSON409 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 413:
+		var dest PayloadTooLarge
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON413 = &dest
+
 	}
 
 	return response, nil
@@ -6016,6 +6084,13 @@ func ParseUpdateConsumerResponse(rsp *http.Response) (*UpdateConsumerResponse, e
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 413:
+		var dest PayloadTooLarge
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON413 = &dest
 
 	}
 
@@ -6130,6 +6205,13 @@ func ParseRenameCredentialResponse(rsp *http.Response) (*RenameCredentialRespons
 		}
 		response.JSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 413:
+		var dest PayloadTooLarge
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON413 = &dest
+
 	}
 
 	return response, nil
@@ -6188,6 +6270,13 @@ func ParseMcpResponse(rsp *http.Response) (*McpResponse, error) {
 			return nil, err
 		}
 		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 413:
+		var dest PayloadTooLarge
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON413 = &dest
 
 	case rsp.StatusCode == 200:
 		// Content-type (text/event-stream) unsupported
@@ -6271,6 +6360,13 @@ func ParseCreateObjectResponse(rsp *http.Response) (*CreateObjectResponse, error
 			return nil, err
 		}
 		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 413:
+		var dest PayloadTooLarge
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON413 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
 		var dest UnprocessableEntity
@@ -6384,6 +6480,13 @@ func ParseUpdateObjectResponse(rsp *http.Response) (*UpdateObjectResponse, error
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 413:
+		var dest PayloadTooLarge
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON413 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
 		var dest UnprocessableEntity
@@ -6531,6 +6634,13 @@ func ParseCreateTokenResponse(rsp *http.Response) (*CreateTokenResponse, error) 
 		}
 		response.JSON401 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 413:
+		var dest PayloadTooLarge
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON413 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
 		var dest UnprocessableEntity
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -6650,6 +6760,13 @@ func ParseRotateTokenResponse(rsp *http.Response) (*RotateTokenResponse, error) 
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 413:
+		var dest PayloadTooLarge
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON413 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
 		var dest UnprocessableEntity
