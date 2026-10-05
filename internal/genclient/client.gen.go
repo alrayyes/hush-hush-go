@@ -182,6 +182,9 @@ type AuditLogEntry struct {
 	// "Internal id decoupled from user-facing slug" requirement).
 	ObjectId  ObjectSlug `json:"object_id"`
 	Timestamp time.Time  `json:"timestamp"`
+
+	// VariantId The UUID of the object the entry is about. `object_id` is only its name, which several variants can share. Left out of an entry written before this was recorded.
+	VariantId *openapi_types.UUID `json:"variant_id,omitempty"`
 }
 
 // AuditLogEntryAction defines model for AuditLogEntry.Action.
