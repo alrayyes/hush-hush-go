@@ -240,6 +240,10 @@ type ListObjectsFilter struct {
 // but enumerating every object is a capability none of those grant on
 // their own.
 //
+// The list is read a page of 500 at a time and returned whole, in the
+// server's order, so it stays complete however many objects there are. A
+// failed page returns its error and no rows.
+//
 // To filter by tag as well, use ListObjectsFiltered.
 func (c *Client) ListObjects(ctx context.Context, usedBy string) ([]ObjectMetadata, error) {
 	return c.ListObjectsFiltered(ctx, ListObjectsFilter{UsedBy: usedBy})
@@ -251,19 +255,22 @@ func (c *Client) ListObjects(ctx context.Context, usedBy string) ([]ObjectMetada
 // one, so listing by [prod] returns the prod objects and listing by
 // [prod, ci] only those carrying both.
 func (c *Client) ListObjectsFiltered(ctx context.Context, filter ListObjectsFilter) ([]ObjectMetadata, error) {
-	params := &genclient.ListObjectsParams{}
-	if filter.UsedBy != "" {
-		params.UsedBy = &filter.UsedBy
-	}
-	if len(filter.Tags) > 0 {
-		params.Tag = &filter.Tags
-	}
-	resp, err := c.api.ListObjectsWithResponse(ctx, params, c.authEditor)
-	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode() != http.StatusOK || resp.JSON200 == nil {
-		return nil, newAPIError(resp.StatusCode(), resp.HTTPResponse.Header, resp.Body)
-	}
-	return *resp.JSON200, nil
+	return readAllPages(ctx, func(ctx context.Context, limit, offset int32) (page[ObjectMetadata], error) {
+		params := &genclient.ListObjectsParams{Limit: &limit, Offset: &offset}
+		if filter.UsedBy != "" {
+			params.UsedBy = &filter.UsedBy
+		}
+		if len(filter.Tags) > 0 {
+			params.Tag = &filter.Tags
+		}
+		resp, err := c.api.ListObjectsWithResponse(ctx, params, c.authEditor)
+		if err != nil {
+			return page[ObjectMetadata]{}, err
+		}
+		if resp.StatusCode() != http.StatusOK || resp.JSON200 == nil {
+			return page[ObjectMetadata]{}, newAPIError(resp.StatusCode(), resp.HTTPResponse.Header, resp.Body)
+		}
+		total, hasTotal := totalCount(resp.HTTPResponse.Header)
+		return page[ObjectMetadata]{rows: *resp.JSON200, total: total, hasTotal: hasTotal}, nil
+	})
 }
