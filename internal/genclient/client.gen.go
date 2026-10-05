@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/oapi-codegen/runtime"
+	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
 const (
@@ -486,6 +487,9 @@ type ObjectMetadata struct {
 	// slug. Fixed at creation - there is no way to change it later.
 	Description *ObjectDescription `json:"description,omitempty"`
 
+	// Id The object's UUID. Several objects can share a name (each is a variant, with its own value and consumers), so this is what tells them apart and what `id` selects.
+	Id openapi_types.UUID `json:"id"`
+
 	// KeepReadableCopy Requests that the owner's own escrowed identity public key be
 	// included as an additional decrypt recipient, alongside whatever
 	// consumer recipients the client already resolved
@@ -821,6 +825,15 @@ type CsrfToken = string
 // CsrfTokenOptional defines model for csrfTokenOptional.
 type CsrfTokenOptional = string
 
+// ObjectId defines model for objectId.
+type ObjectId = openapi_types.UUID
+
+// PageLimit defines model for pageLimit.
+type PageLimit = int32
+
+// PageOffset defines model for pageOffset.
+type PageOffset = int32
+
 // Slug A caller-chosen, unique identifier for an object - what every
 // documented request path (URL, CLI, API) addresses it by. The
 // object's internal id is a separate, opaque value never exposed to
@@ -851,6 +864,9 @@ type UnknownConsumer = Error
 
 // UnprocessableEntity defines model for UnprocessableEntity.
 type UnprocessableEntity = Error
+
+// VariantConflict defines model for VariantConflict.
+type VariantConflict = Error
 
 // bearerAuthContextKey is the context key for bearerAuth security scheme
 type bearerAuthContextKey string
@@ -912,6 +928,15 @@ type LogoutParams struct {
 	// session cookie at login/registration time; the frontend reads that
 	// cookie and echoes its value back here.
 	XCSRFToken CsrfToken `json:"X-CSRF-Token"`
+}
+
+// ListConsumerTokensParams defines parameters for ListConsumerTokens.
+type ListConsumerTokensParams struct {
+	// Limit How many rows to return. Give `limit`, `offset` or both to get one page; give neither and the response is every row. `X-Total-Count` says how many there are in all.
+	Limit *PageLimit `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Offset How many rows to skip. With `limit` left out, a page is 50 rows.
+	Offset *PageOffset `form:"offset,omitempty" json:"offset,omitempty"`
 }
 
 // CreateConsumerTokenParams defines parameters for CreateConsumerToken.
@@ -1004,6 +1029,15 @@ type UpdateConsumerParams struct {
 	XCSRFToken *CsrfTokenOptional `json:"X-CSRF-Token,omitempty"`
 }
 
+// ListCredentialsParams defines parameters for ListCredentials.
+type ListCredentialsParams struct {
+	// Limit How many rows to return. Give `limit`, `offset` or both to get one page; give neither and the response is every row. `X-Total-Count` says how many there are in all.
+	Limit *PageLimit `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Offset How many rows to skip. With `limit` left out, a page is 50 rows.
+	Offset *PageOffset `form:"offset,omitempty" json:"offset,omitempty"`
+}
+
 // DeleteCredentialParams defines parameters for DeleteCredential.
 type DeleteCredentialParams struct {
 	// XCSRFToken The current session's own CSRF token - required on every
@@ -1036,6 +1070,12 @@ type ListObjectsParams struct {
 	// require several - an object must carry every one. Matched
 	// case-insensitively.
 	Tag *[]Tag `form:"tag,omitempty" json:"tag,omitempty"`
+
+	// Limit How many rows to return. Give `limit`, `offset` or both to get one page; give neither and the response is every row. `X-Total-Count` says how many there are in all.
+	Limit *PageLimit `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Offset How many rows to skip. With `limit` left out, a page is 50 rows.
+	Offset *PageOffset `form:"offset,omitempty" json:"offset,omitempty"`
 }
 
 // CreateObjectParams defines parameters for CreateObject.
@@ -1057,6 +1097,9 @@ type CreateObjectParams struct {
 
 // DeleteObjectParams defines parameters for DeleteObject.
 type DeleteObjectParams struct {
+	// Id The UUID of one variant, when the name has several. Without it a name with one variant is addressed as always, and a name with several is a 409. It has to belong to that name, or the answer is 404.
+	Id *ObjectId `form:"id,omitempty" json:"id,omitempty"`
+
 	// XCaller The caller's own identity - a repo or host name, whatever the
 	// caller wants attributed to it in the audit log. Not authenticated
 	// or verified: a courtesy label a caller presents about itself, not
@@ -1074,6 +1117,9 @@ type DeleteObjectParams struct {
 
 // GetObjectParams defines parameters for GetObject.
 type GetObjectParams struct {
+	// Id The UUID of one variant, when the name has several. Without it a name with one variant is addressed as always, and a name with several is a 409. It has to belong to that name, or the answer is 404.
+	Id *ObjectId `form:"id,omitempty" json:"id,omitempty"`
+
 	// XCaller The caller's own identity - a repo or host name, whatever the
 	// caller wants attributed to it in the audit log. Not authenticated
 	// or verified: a courtesy label a caller presents about itself, not
@@ -1084,6 +1130,9 @@ type GetObjectParams struct {
 
 // UpdateObjectParams defines parameters for UpdateObject.
 type UpdateObjectParams struct {
+	// Id The UUID of one variant, when the name has several. Without it a name with one variant is addressed as always, and a name with several is a 409. It has to belong to that name, or the answer is 404.
+	Id *ObjectId `form:"id,omitempty" json:"id,omitempty"`
+
 	// XCaller The caller's own identity - a repo or host name, whatever the
 	// caller wants attributed to it in the audit log. Not authenticated
 	// or verified: a courtesy label a caller presents about itself, not
@@ -1097,6 +1146,21 @@ type UpdateObjectParams struct {
 	// so no CSRF token to send). See `csrfToken` for the always-required
 	// form used where session auth is the only option.
 	XCSRFToken *CsrfTokenOptional `json:"X-CSRF-Token,omitempty"`
+}
+
+// GetObjectUsedByParams defines parameters for GetObjectUsedBy.
+type GetObjectUsedByParams struct {
+	// Id The UUID of one variant, when the name has several. Without it a name with one variant is addressed as always, and a name with several is a 409. It has to belong to that name, or the answer is 404.
+	Id *ObjectId `form:"id,omitempty" json:"id,omitempty"`
+}
+
+// ListTokensParams defines parameters for ListTokens.
+type ListTokensParams struct {
+	// Limit How many rows to return. Give `limit`, `offset` or both to get one page; give neither and the response is every row. `X-Total-Count` says how many there are in all.
+	Limit *PageLimit `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Offset How many rows to skip. With `limit` left out, a page is 50 rows.
+	Offset *PageOffset `form:"offset,omitempty" json:"offset,omitempty"`
 }
 
 // CreateTokenParams defines parameters for CreateToken.
@@ -1342,7 +1406,7 @@ type ClientInterface interface {
 	GetAuthStatus(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListConsumerTokens request
-	ListConsumerTokens(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListConsumerTokens(ctx context.Context, params *ListConsumerTokensParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateConsumerTokenWithBody request with any body
 	CreateConsumerTokenWithBody(ctx context.Context, params *CreateConsumerTokenParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1377,7 +1441,7 @@ type ClientInterface interface {
 	UpdateConsumer(ctx context.Context, name ConsumerName, params *UpdateConsumerParams, body UpdateConsumerJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListCredentials request
-	ListCredentials(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListCredentials(ctx context.Context, params *ListCredentialsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteCredential request
 	DeleteCredential(ctx context.Context, id CredentialId, params *DeleteCredentialParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1415,13 +1479,13 @@ type ClientInterface interface {
 	UpdateObject(ctx context.Context, slug Slug, params *UpdateObjectParams, body UpdateObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetObjectUsedBy request
-	GetObjectUsedBy(ctx context.Context, slug Slug, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetObjectUsedBy(ctx context.Context, slug Slug, params *GetObjectUsedByParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// Ready request
 	Ready(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListTokens request
-	ListTokens(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListTokens(ctx context.Context, params *ListTokensParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateTokenWithBody request with any body
 	CreateTokenWithBody(ctx context.Context, params *CreateTokenParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1572,8 +1636,8 @@ func (c *Client) GetAuthStatus(ctx context.Context, reqEditors ...RequestEditorF
 	return c.Client.Do(req)
 }
 
-func (c *Client) ListConsumerTokens(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewListConsumerTokensRequest(c.Server)
+func (c *Client) ListConsumerTokens(ctx context.Context, params *ListConsumerTokensParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListConsumerTokensRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -1728,8 +1792,8 @@ func (c *Client) UpdateConsumer(ctx context.Context, name ConsumerName, params *
 	return c.Client.Do(req)
 }
 
-func (c *Client) ListCredentials(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewListCredentialsRequest(c.Server)
+func (c *Client) ListCredentials(ctx context.Context, params *ListCredentialsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListCredentialsRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -1896,8 +1960,8 @@ func (c *Client) UpdateObject(ctx context.Context, slug Slug, params *UpdateObje
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetObjectUsedBy(ctx context.Context, slug Slug, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetObjectUsedByRequest(c.Server, slug)
+func (c *Client) GetObjectUsedBy(ctx context.Context, slug Slug, params *GetObjectUsedByParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetObjectUsedByRequest(c.Server, slug, params)
 	if err != nil {
 		return nil, err
 	}
@@ -1920,8 +1984,8 @@ func (c *Client) Ready(ctx context.Context, reqEditors ...RequestEditorFn) (*htt
 	return c.Client.Do(req)
 }
 
-func (c *Client) ListTokens(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewListTokensRequest(c.Server)
+func (c *Client) ListTokens(ctx context.Context, params *ListTokensParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListTokensRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -2398,7 +2462,7 @@ func NewGetAuthStatusRequest(server string) (*http.Request, error) {
 }
 
 // NewListConsumerTokensRequest generates requests for ListConsumerTokens
-func NewListConsumerTokensRequest(server string) (*http.Request, error) {
+func NewListConsumerTokensRequest(server string, params *ListConsumerTokensParams) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -2414,6 +2478,45 @@ func NewListConsumerTokensRequest(server string) (*http.Request, error) {
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: "int32"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Offset != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "offset", *params.Offset, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: "int32"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
@@ -2884,7 +2987,7 @@ func NewUpdateConsumerRequestWithBody(server string, name ConsumerName, params *
 }
 
 // NewListCredentialsRequest generates requests for ListCredentials
-func NewListCredentialsRequest(server string) (*http.Request, error) {
+func NewListCredentialsRequest(server string, params *ListCredentialsParams) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -2900,6 +3003,45 @@ func NewListCredentialsRequest(server string) (*http.Request, error) {
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: "int32"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Offset != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "offset", *params.Offset, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: "int32"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
@@ -3136,6 +3278,30 @@ func NewListObjectsRequest(server string, params *ListObjectsParams) (*http.Requ
 
 		}
 
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: "int32"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Offset != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "offset", *params.Offset, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: "int32"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
 		if encoded := queryValues.Encode(); encoded != "" {
 			rawQueryFragments = append(rawQueryFragments, encoded)
 		}
@@ -3242,6 +3408,33 @@ func NewDeleteObjectRequest(server string, slug Slug, params *DeleteObjectParams
 		return nil, err
 	}
 
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Id != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "id", *params.Id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
 	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
 	if err != nil {
 		return nil, err
@@ -3300,6 +3493,33 @@ func NewGetObjectRequest(server string, slug Slug, params *GetObjectParams) (*ht
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Id != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "id", *params.Id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
@@ -3362,6 +3582,33 @@ func NewUpdateObjectRequestWithBody(server string, slug Slug, params *UpdateObje
 		return nil, err
 	}
 
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Id != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "id", *params.Id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
 	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
 	if err != nil {
 		return nil, err
@@ -3399,7 +3646,7 @@ func NewUpdateObjectRequestWithBody(server string, slug Slug, params *UpdateObje
 }
 
 // NewGetObjectUsedByRequest generates requests for GetObjectUsedBy
-func NewGetObjectUsedByRequest(server string, slug Slug) (*http.Request, error) {
+func NewGetObjectUsedByRequest(server string, slug Slug, params *GetObjectUsedByParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -3422,6 +3669,33 @@ func NewGetObjectUsedByRequest(server string, slug Slug) (*http.Request, error) 
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Id != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "id", *params.Id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
@@ -3460,7 +3734,7 @@ func NewReadyRequest(server string) (*http.Request, error) {
 }
 
 // NewListTokensRequest generates requests for ListTokens
-func NewListTokensRequest(server string) (*http.Request, error) {
+func NewListTokensRequest(server string, params *ListTokensParams) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -3476,6 +3750,45 @@ func NewListTokensRequest(server string) (*http.Request, error) {
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: "int32"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Offset != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "offset", *params.Offset, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: "int32"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
@@ -3768,7 +4081,7 @@ type ClientWithResponsesInterface interface {
 	GetAuthStatusWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetAuthStatusResponse, error)
 
 	// ListConsumerTokensWithResponse request
-	ListConsumerTokensWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListConsumerTokensResponse, error)
+	ListConsumerTokensWithResponse(ctx context.Context, params *ListConsumerTokensParams, reqEditors ...RequestEditorFn) (*ListConsumerTokensResponse, error)
 
 	// CreateConsumerTokenWithBodyWithResponse request with any body
 	CreateConsumerTokenWithBodyWithResponse(ctx context.Context, params *CreateConsumerTokenParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateConsumerTokenResponse, error)
@@ -3803,7 +4116,7 @@ type ClientWithResponsesInterface interface {
 	UpdateConsumerWithResponse(ctx context.Context, name ConsumerName, params *UpdateConsumerParams, body UpdateConsumerJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateConsumerResponse, error)
 
 	// ListCredentialsWithResponse request
-	ListCredentialsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListCredentialsResponse, error)
+	ListCredentialsWithResponse(ctx context.Context, params *ListCredentialsParams, reqEditors ...RequestEditorFn) (*ListCredentialsResponse, error)
 
 	// DeleteCredentialWithResponse request
 	DeleteCredentialWithResponse(ctx context.Context, id CredentialId, params *DeleteCredentialParams, reqEditors ...RequestEditorFn) (*DeleteCredentialResponse, error)
@@ -3841,13 +4154,13 @@ type ClientWithResponsesInterface interface {
 	UpdateObjectWithResponse(ctx context.Context, slug Slug, params *UpdateObjectParams, body UpdateObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateObjectResponse, error)
 
 	// GetObjectUsedByWithResponse request
-	GetObjectUsedByWithResponse(ctx context.Context, slug Slug, reqEditors ...RequestEditorFn) (*GetObjectUsedByResponse, error)
+	GetObjectUsedByWithResponse(ctx context.Context, slug Slug, params *GetObjectUsedByParams, reqEditors ...RequestEditorFn) (*GetObjectUsedByResponse, error)
 
 	// ReadyWithResponse request
 	ReadyWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ReadyResponse, error)
 
 	// ListTokensWithResponse request
-	ListTokensWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListTokensResponse, error)
+	ListTokensWithResponse(ctx context.Context, params *ListTokensParams, reqEditors ...RequestEditorFn) (*ListTokensResponse, error)
 
 	// CreateTokenWithBodyWithResponse request with any body
 	CreateTokenWithBodyWithResponse(ctx context.Context, params *CreateTokenParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTokenResponse, error)
@@ -4153,6 +4466,7 @@ type ListConsumerTokensResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *[]ConsumerTokenMetadata
+	JSON400      *BadRequest
 	JSON401      *Unauthorized
 }
 
@@ -4420,6 +4734,7 @@ type UpdateConsumerResponse struct {
 	JSON400      *BadRequest
 	JSON401      *Unauthorized
 	JSON404      *UnknownConsumer
+	JSON409      *VariantConflict
 	JSON413      *PayloadTooLarge
 	JSON422      *UnprocessableEntity
 }
@@ -4452,6 +4767,7 @@ type ListCredentialsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *[]Credential
+	JSON400      *BadRequest
 	JSON401      *Unauthorized
 }
 
@@ -4678,8 +4994,10 @@ func (r CreateObjectResponse) ContentType() string {
 type DeleteObjectResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
+	JSON400      *BadRequest
 	JSON401      *Unauthorized
 	JSON404      *NotFound
+	JSON409      *VariantConflict
 	JSON422      *UnprocessableEntity
 }
 
@@ -4710,8 +5028,10 @@ func (r DeleteObjectResponse) ContentType() string {
 type GetObjectResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
+	JSON400      *BadRequest
 	JSON401      *Unauthorized
 	JSON404      *NotFound
+	JSON409      *VariantConflict
 	JSON422      *UnprocessableEntity
 }
 
@@ -4743,8 +5063,10 @@ type UpdateObjectResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *ObjectMetadata
+	JSON400      *BadRequest
 	JSON401      *Unauthorized
 	JSON404      *NotFound
+	JSON409      *VariantConflict
 	JSON413      *PayloadTooLarge
 	JSON422      *UnprocessableEntity
 }
@@ -4777,7 +5099,10 @@ type GetObjectUsedByResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *UsedBy
+	JSON400      *BadRequest
 	JSON404      *NotFound
+	JSON409      *VariantConflict
+	JSON422      *UnprocessableEntity
 }
 
 // Status returns HTTPResponse.Status
@@ -4839,6 +5164,7 @@ type ListTokensResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *[]TokenMetadata
+	JSON400      *BadRequest
 	JSON401      *Unauthorized
 }
 
@@ -5097,8 +5423,8 @@ func (c *ClientWithResponses) GetAuthStatusWithResponse(ctx context.Context, req
 }
 
 // ListConsumerTokensWithResponse request returning *ListConsumerTokensResponse
-func (c *ClientWithResponses) ListConsumerTokensWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListConsumerTokensResponse, error) {
-	rsp, err := c.ListConsumerTokens(ctx, reqEditors...)
+func (c *ClientWithResponses) ListConsumerTokensWithResponse(ctx context.Context, params *ListConsumerTokensParams, reqEditors ...RequestEditorFn) (*ListConsumerTokensResponse, error) {
+	rsp, err := c.ListConsumerTokens(ctx, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -5210,8 +5536,8 @@ func (c *ClientWithResponses) UpdateConsumerWithResponse(ctx context.Context, na
 }
 
 // ListCredentialsWithResponse request returning *ListCredentialsResponse
-func (c *ClientWithResponses) ListCredentialsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListCredentialsResponse, error) {
-	rsp, err := c.ListCredentials(ctx, reqEditors...)
+func (c *ClientWithResponses) ListCredentialsWithResponse(ctx context.Context, params *ListCredentialsParams, reqEditors ...RequestEditorFn) (*ListCredentialsResponse, error) {
+	rsp, err := c.ListCredentials(ctx, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -5332,8 +5658,8 @@ func (c *ClientWithResponses) UpdateObjectWithResponse(ctx context.Context, slug
 }
 
 // GetObjectUsedByWithResponse request returning *GetObjectUsedByResponse
-func (c *ClientWithResponses) GetObjectUsedByWithResponse(ctx context.Context, slug Slug, reqEditors ...RequestEditorFn) (*GetObjectUsedByResponse, error) {
-	rsp, err := c.GetObjectUsedBy(ctx, slug, reqEditors...)
+func (c *ClientWithResponses) GetObjectUsedByWithResponse(ctx context.Context, slug Slug, params *GetObjectUsedByParams, reqEditors ...RequestEditorFn) (*GetObjectUsedByResponse, error) {
+	rsp, err := c.GetObjectUsedBy(ctx, slug, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -5350,8 +5676,8 @@ func (c *ClientWithResponses) ReadyWithResponse(ctx context.Context, reqEditors 
 }
 
 // ListTokensWithResponse request returning *ListTokensResponse
-func (c *ClientWithResponses) ListTokensWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListTokensResponse, error) {
-	rsp, err := c.ListTokens(ctx, reqEditors...)
+func (c *ClientWithResponses) ListTokensWithResponse(ctx context.Context, params *ListTokensParams, reqEditors ...RequestEditorFn) (*ListTokensResponse, error) {
+	rsp, err := c.ListTokens(ctx, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -5756,6 +6082,13 @@ func ParseListConsumerTokensResponse(rsp *http.Response) (*ListConsumerTokensRes
 		}
 		response.JSON200 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest Unauthorized
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -6153,6 +6486,13 @@ func ParseUpdateConsumerResponse(rsp *http.Response) (*UpdateConsumerResponse, e
 		}
 		response.JSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest VariantConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 413:
 		var dest PayloadTooLarge
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -6192,6 +6532,13 @@ func ParseListCredentialsResponse(rsp *http.Response) (*ListCredentialsResponse,
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest Unauthorized
@@ -6490,6 +6837,13 @@ func ParseDeleteObjectResponse(rsp *http.Response) (*DeleteObjectResponse, error
 	}
 
 	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest Unauthorized
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -6503,6 +6857,13 @@ func ParseDeleteObjectResponse(rsp *http.Response) (*DeleteObjectResponse, error
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest VariantConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
 		var dest UnprocessableEntity
@@ -6530,6 +6891,13 @@ func ParseGetObjectResponse(rsp *http.Response) (*GetObjectResponse, error) {
 	}
 
 	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest Unauthorized
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -6543,6 +6911,13 @@ func ParseGetObjectResponse(rsp *http.Response) (*GetObjectResponse, error) {
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest VariantConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
 		var dest UnprocessableEntity
@@ -6577,6 +6952,13 @@ func ParseUpdateObjectResponse(rsp *http.Response) (*UpdateObjectResponse, error
 		}
 		response.JSON200 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest Unauthorized
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -6590,6 +6972,13 @@ func ParseUpdateObjectResponse(rsp *http.Response) (*UpdateObjectResponse, error
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest VariantConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 413:
 		var dest PayloadTooLarge
@@ -6631,12 +7020,33 @@ func ParseGetObjectUsedByResponse(rsp *http.Response) (*GetObjectUsedByResponse,
 		}
 		response.JSON200 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
 		var dest NotFound
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest VariantConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
 
 	}
 
@@ -6696,6 +7106,13 @@ func ParseListTokensResponse(rsp *http.Response) (*ListTokensResponse, error) {
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest Unauthorized
