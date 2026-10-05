@@ -25,7 +25,7 @@ func (c *Client) CreateConsumerToken(ctx context.Context, req CreateConsumerToke
 // never a raw value, which by design no longer exists anywhere to return
 // once a token is created. Requires a credential.
 func (c *Client) ListConsumerTokens(ctx context.Context) ([]ConsumerTokenMetadata, error) {
-	resp, err := c.api.ListConsumerTokensWithResponse(ctx, c.authEditor)
+	resp, err := c.api.ListConsumerTokensWithResponse(ctx, &genclient.ListConsumerTokensParams{}, c.authEditor)
 	if err != nil {
 		return nil, err
 	}
