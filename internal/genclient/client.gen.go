@@ -3867,6 +3867,7 @@ type QueryAuditLogResponse struct {
 	HTTPResponse *http.Response
 	JSON200      *[]AuditLogEntry
 	JSON400      *BadRequest
+	JSON422      *UnprocessableEntity
 }
 
 // Status returns HTTPResponse.Status
@@ -4021,6 +4022,7 @@ type LogoutResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON401      *Unauthorized
+	JSON422      *UnprocessableEntity
 }
 
 // Status returns HTTPResponse.Status
@@ -4212,6 +4214,7 @@ type RevokeConsumerTokenResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON401      *Unauthorized
+	JSON422      *UnprocessableEntity
 }
 
 // Status returns HTTPResponse.Status
@@ -4244,6 +4247,7 @@ type PurgeConsumerTokenResponse struct {
 	JSON401      *Unauthorized
 	JSON404      *NotFound
 	JSON409      *TokenStillActive
+	JSON422      *UnprocessableEntity
 }
 
 // Status returns HTTPResponse.Status
@@ -4311,6 +4315,7 @@ type ListConsumersResponse struct {
 	JSON200      *ListConsumers200JSONResponseBody
 	JSON400      *BadRequest
 	JSON401      *Unauthorized
+	JSON422      *UnprocessableEntity
 }
 
 // Status returns HTTPResponse.Status
@@ -4345,6 +4350,7 @@ type AddConsumerResponse struct {
 	JSON401      *Unauthorized
 	JSON409      *ConsumerAlreadyExists
 	JSON413      *PayloadTooLarge
+	JSON422      *UnprocessableEntity
 }
 
 // Status returns HTTPResponse.Status
@@ -4376,6 +4382,7 @@ type DeleteConsumerResponse struct {
 	HTTPResponse *http.Response
 	JSON401      *Unauthorized
 	JSON404      *UnknownConsumer
+	JSON422      *UnprocessableEntity
 }
 
 // Status returns HTTPResponse.Status
@@ -4410,6 +4417,7 @@ type UpdateConsumerResponse struct {
 	JSON401      *Unauthorized
 	JSON404      *UnknownConsumer
 	JSON413      *PayloadTooLarge
+	JSON422      *UnprocessableEntity
 }
 
 // Status returns HTTPResponse.Status
@@ -4473,6 +4481,7 @@ type DeleteCredentialResponse struct {
 	JSON401      *Unauthorized
 	JSON404      *NotFound
 	JSON409      *Error
+	JSON422      *UnprocessableEntity
 }
 
 // Status returns HTTPResponse.Status
@@ -4506,6 +4515,7 @@ type RenameCredentialResponse struct {
 	JSON401      *Unauthorized
 	JSON404      *NotFound
 	JSON413      *PayloadTooLarge
+	JSON422      *UnprocessableEntity
 }
 
 // Status returns HTTPResponse.Status
@@ -4600,6 +4610,7 @@ type ListObjectsResponse struct {
 	JSON200      *[]ObjectMetadata
 	JSON400      *BadRequest
 	JSON401      *Unauthorized
+	JSON422      *UnprocessableEntity
 }
 
 // Status returns HTTPResponse.Status
@@ -4665,6 +4676,7 @@ type DeleteObjectResponse struct {
 	HTTPResponse *http.Response
 	JSON401      *Unauthorized
 	JSON404      *NotFound
+	JSON422      *UnprocessableEntity
 }
 
 // Status returns HTTPResponse.Status
@@ -4696,6 +4708,7 @@ type GetObjectResponse struct {
 	HTTPResponse *http.Response
 	JSON401      *Unauthorized
 	JSON404      *NotFound
+	JSON422      *UnprocessableEntity
 }
 
 // Status returns HTTPResponse.Status
@@ -4887,6 +4900,7 @@ type RevokeTokenResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON401      *Unauthorized
+	JSON422      *UnprocessableEntity
 }
 
 // Status returns HTTPResponse.Status
@@ -4919,6 +4933,7 @@ type PurgeTokenResponse struct {
 	JSON401      *Unauthorized
 	JSON404      *NotFound
 	JSON409      *TokenStillActive
+	JSON422      *UnprocessableEntity
 }
 
 // Status returns HTTPResponse.Status
@@ -5419,6 +5434,13 @@ func ParseQueryAuditLogResponse(rsp *http.Response) (*QueryAuditLogResponse, err
 		}
 		response.JSON400 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
 	}
 
 	return response, nil
@@ -5576,6 +5598,13 @@ func ParseLogoutResponse(rsp *http.Response) (*LogoutResponse, error) {
 			return nil, err
 		}
 		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
 
 	}
 
@@ -5810,6 +5839,13 @@ func ParseRevokeConsumerTokenResponse(rsp *http.Response) (*RevokeConsumerTokenR
 		}
 		response.JSON401 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
 	}
 
 	return response, nil
@@ -5849,6 +5885,13 @@ func ParsePurgeConsumerTokenResponse(rsp *http.Response) (*PurgeConsumerTokenRes
 			return nil, err
 		}
 		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
 
 	}
 
@@ -5951,6 +5994,13 @@ func ParseListConsumersResponse(rsp *http.Response) (*ListConsumersResponse, err
 		}
 		response.JSON401 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
 	}
 
 	return response, nil
@@ -6005,6 +6055,13 @@ func ParseAddConsumerResponse(rsp *http.Response) (*AddConsumerResponse, error) 
 		}
 		response.JSON413 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
 	}
 
 	return response, nil
@@ -6037,6 +6094,13 @@ func ParseDeleteConsumerResponse(rsp *http.Response) (*DeleteConsumerResponse, e
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
 
 	}
 
@@ -6091,6 +6155,13 @@ func ParseUpdateConsumerResponse(rsp *http.Response) (*UpdateConsumerResponse, e
 			return nil, err
 		}
 		response.JSON413 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
 
 	}
 
@@ -6165,6 +6236,13 @@ func ParseDeleteCredentialResponse(rsp *http.Response) (*DeleteCredentialRespons
 		}
 		response.JSON409 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
 	}
 
 	return response, nil
@@ -6211,6 +6289,13 @@ func ParseRenameCredentialResponse(rsp *http.Response) (*RenameCredentialRespons
 			return nil, err
 		}
 		response.JSON413 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
 
 	}
 
@@ -6321,6 +6406,13 @@ func ParseListObjectsResponse(rsp *http.Response) (*ListObjectsResponse, error) 
 		}
 		response.JSON401 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
 	}
 
 	return response, nil
@@ -6408,6 +6500,13 @@ func ParseDeleteObjectResponse(rsp *http.Response) (*DeleteObjectResponse, error
 		}
 		response.JSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
 	}
 
 	return response, nil
@@ -6440,6 +6539,13 @@ func ParseGetObjectResponse(rsp *http.Response) (*GetObjectResponse, error) {
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
 
 	}
 
@@ -6674,6 +6780,13 @@ func ParseRevokeTokenResponse(rsp *http.Response) (*RevokeTokenResponse, error) 
 		}
 		response.JSON401 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
 	}
 
 	return response, nil
@@ -6713,6 +6826,13 @@ func ParsePurgeTokenResponse(rsp *http.Response) (*PurgeTokenResponse, error) {
 			return nil, err
 		}
 		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
 
 	}
 
