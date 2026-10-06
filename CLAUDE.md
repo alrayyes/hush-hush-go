@@ -28,9 +28,13 @@ specific to this repo.
 - **`HUSH_HUSH_STAGING_URL`/`HUSH_HUSH_STAGING_API_KEY` secrets aren't set
   yet.** `e2e.yml` skips cleanly until a maintainer adds them — Actions
   secrets can't be read or set by anyone but the repo owner.
-- **`ci.yml`'s `pages` job publishes the test and coverage reports** to
-  GitHub Pages (`/reports/`, reached at
-  <https://apis.ryankes.eu/hush-hush-go/reports/>) on a push to `main`, and
-  nothing else. Deploying replaces the whole site, so it needs `test` green
-  and runs after every other job. `test` uploads the `go-reports` artifact it
-  stages from. `scripts/reports-index.html` is the landing page.
+- **`ci.yml` publishes the test and coverage reports** to GitHub Pages
+  (`/reports/`, reached at <https://apis.ryankes.eu/hush-hush-go/reports/>).
+  `test` uploads the `go-reports` artifact on every run, and
+  `assemble-reports` stages `_site/` from it on pull requests too, so a broken
+  staging step fails before the merge. Only a push to `main` uploads the Pages
+  artifact, and the `pages` job deploys it. That job holds the `github-pages`
+  environment, which is limited to `main`, so it can't share a job with the
+  staging. Deploying replaces the whole site, so `pages` needs `test` green
+  and runs after every other job. `scripts/reports-index.html` is the landing
+  page.
