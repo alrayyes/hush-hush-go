@@ -3,6 +3,7 @@ module github.com/alrayyes/hush-hush-go/v4
 go 1.26
 
 tool (
+	github.com/boumenot/gocover-cobertura
 	github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen
 	gotest.tools/gotestsum
 )
@@ -15,6 +16,7 @@ require (
 require (
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/bitfield/gotestdox v0.2.2 // indirect
+	github.com/boumenot/gocover-cobertura v1.5.0 // indirect
 	github.com/dnephin/pflag v1.0.7 // indirect
 	github.com/dprotaso/go-yit v0.0.0-20220510233725-9ba8df137936 // indirect
 	github.com/fatih/color v1.18.0 // indirect

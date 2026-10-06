@@ -92,6 +92,12 @@ one, not only an administrator session. See
 [GoDoc](https://pkg.go.dev/github.com/alrayyes/hush-hush-go) for the full API
 surface.
 
+## Reports
+
+The latest green run on `main` publishes its test and coverage reports at
+<https://apis.ryankes.eu/hush-hush-go/reports/>. It has the JUnit test results
+and the coverage as HTML, Cobertura XML and Go's native profile.
+
 ## Versioning
 
 This SDK's version tracks hush-hush's OpenAPI spec, not this repo's own
