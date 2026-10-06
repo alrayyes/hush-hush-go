@@ -73,7 +73,6 @@ jobs:
           go tool gocover-cobertura < coverage.out > coverage.xml
           go tool cover -html=coverage.out -o coverage.html
       - name: Keep the reports for pages
-        if: github.event_name == 'push'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: go-reports
@@ -320,10 +319,38 @@ jobs:
             --to "${{ github.event.pull_request.head.sha }}" \
             --verbose
 
-  # Publishes the test and coverage reports to GitHub Pages, on a push to main
-  # only. A deploy replaces the whole site, so `test` has to have passed: a
-  # red run publishes nothing and the last green set stays up. The other jobs
-  # gate it too, so a report never goes live from a commit that fails CI.
+  # Assembles the site the reports are published from, on every run. A pull
+  # request builds it too, so a broken staging step fails before the merge;
+  # only a push to main uploads it as the Pages artifact. No `environment:`
+  # here: the github-pages environment is limited to main, and a job that
+  # declares it can't run on a pull request.
+  assemble-reports:
+    needs: [test]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: go-reports
+          path: _go-reports
+      - name: Stage the site
+        run: |
+          mkdir -p _site/reports/tests _site/reports/coverage
+          cp _go-reports/junit.xml _site/reports/tests/junit.xml
+          cp _go-reports/coverage.html _site/reports/coverage/index.html
+          cp _go-reports/coverage.xml _go-reports/coverage.out _site/reports/coverage/
+          cp scripts/reports-index.html _site/reports/index.html
+      - name: Upload the site for Pages
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: _site
+
+  # Deploys the assembled site to GitHub Pages, on a push to main only. A
+  # deploy replaces the whole site, so `test` has to have passed: a red run
+  # publishes nothing and the last green set stays up. The other jobs gate it
+  # too, so a report never goes live from a commit that fails CI.
   # `commits` only runs on pull requests, so it is skipped here;
   # `!failure() && !cancelled()` lets the deploy run past that skip while
   # still stopping on a failed or cancelled need.
@@ -343,12 +370,12 @@ jobs:
         contract,
         pact-consumer,
         commits,
+        assemble-reports,
       ]
-    if: ${{ !failure() && !cancelled() && needs.test.result == 'success' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    if: ${{ !failure() && !cancelled() && needs.assemble-reports.result == 'success' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
-      contents: read
       pages: write
       id-token: write
     environment:
@@ -358,21 +385,6 @@ jobs:
       group: pages
       cancel-in-progress: false
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          name: go-reports
-          path: _go-reports
-      - name: Stage the site
-        run: |
-          mkdir -p _site/reports/tests _site/reports/coverage
-          cp _go-reports/junit.xml _site/reports/tests/junit.xml
-          cp _go-reports/coverage.html _site/reports/coverage/index.html
-          cp _go-reports/coverage.xml _go-reports/coverage.out _site/reports/coverage/
-          cp scripts/reports-index.html _site/reports/index.html
-      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
-        with:
-          path: _site
       - id: deployment
         uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
       - name: Check the published coverage report is live
