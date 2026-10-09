@@ -1,6 +1,6 @@
 module github.com/alrayyes/hush-hush-go/v4
 
-go 1.26
+go 1.26.9
 
 tool (
 	github.com/boumenot/gocover-cobertura
