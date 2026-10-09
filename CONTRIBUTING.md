@@ -8,7 +8,7 @@
   the git hooks. There's a `package.json`, but nothing here is JavaScript; it
   exists only so those tools resolve and stay pinned.
 - **[golangci-lint](https://golangci-lint.run) v2.13.1**, which the
-  pre-commit hook runs from your `PATH` while CI runs it pinned. Install
+  pre-push hook runs from your `PATH` while CI runs it pinned. Install
   that version rather than whichever is current: when the two disagree, the
   hook passes and the pipeline fails, and the reason isn't obvious from the
   failure.

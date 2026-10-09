@@ -14,10 +14,6 @@ pre-commit:
       run: gofmt -w {staged_files}
       stage_fixed: true
 
-    - name: golangci-lint
-      glob: "*.go"
-      run: golangci-lint run ./...
-
     - name: gomod
       glob: "go.mod"
       run: go mod edit -fmt go.mod
@@ -33,12 +29,8 @@ pre-commit:
       run: bunx markdownlint-cli2 {staged_files}
 
     - name: vale
-      glob: "*.md"
-      run: ./scripts/lint-vale.sh
-
-    - name: actionlint
-      glob: ".github/workflows/*.{yml,yaml}"
-      run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7
+      glob: "{README,CONTRIBUTING,CLAUDE,SECURITY}.md"
+      run: ./scripts/lint-vale.sh {staged_files}
 
 commit-msg:
   jobs:
@@ -48,6 +40,15 @@ commit-msg:
 pre-push:
   parallel: true
   jobs:
+    # Whole-tree checks that can't take a file list, so pre-commit leaves them
+    # to the push (and CI): they'd read unstaged work and cost seconds a commit.
+    - name: golangci-lint
+      run: golangci-lint run ./...
+
+    - name: actionlint
+      glob: ".github/workflows/*.{yml,yaml}"
+      run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7
+
     - name: test
       run: go test ./...
 

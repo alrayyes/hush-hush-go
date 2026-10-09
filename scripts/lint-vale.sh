@@ -11,10 +11,16 @@ IMAGE=jdkato/vale:v3.17.1@sha256:7dba3c9104ba366f172d119022c4ec53a005f7d14dc1b80
 
 cd "$(dirname "$0")/.."
 
+# With arguments, lint just those files (the pre-commit hook passes the staged
+# ones); with none, the whole house set, as pre-push and CI do.
+if [ "$#" -eq 0 ]; then
+  set -- README.md CONTRIBUTING.md CLAUDE.md SECURITY.md
+fi
+
 if command -v vale >/dev/null 2>&1; then
   vale sync
-  vale README.md CONTRIBUTING.md CLAUDE.md SECURITY.md
+  vale "$@"
 else
   docker run --rm -v "$PWD:/work" -w /work --entrypoint sh "$IMAGE" \
-    -c "vale sync && vale README.md CONTRIBUTING.md CLAUDE.md SECURITY.md"
+    -c 'vale sync && vale "$@"' sh "$@"
 fi
