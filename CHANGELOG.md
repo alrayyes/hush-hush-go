@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.4.3](https://github.com/alrayyes/hush-hush-go/compare/v4.4.2...v4.4.3) (2026-10-09)
+
+
+### Bug Fixes
+
+* **deps:** require Go 1.26.9 for the standard-library advisories ([#247](https://github.com/alrayyes/hush-hush-go/issues/247)) ([2dd64c5](https://github.com/alrayyes/hush-hush-go/commit/2dd64c5ec9347fc19d78352c590883aeb186d0d4)), closes [#246](https://github.com/alrayyes/hush-hush-go/issues/246)
+
 ## [4.4.2](https://github.com/alrayyes/hush-hush-go/compare/v4.4.1...v4.4.2) (2026-10-05)
 
 
