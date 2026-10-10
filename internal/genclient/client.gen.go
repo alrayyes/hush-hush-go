@@ -209,6 +209,12 @@ type AuditLogFilterOptions struct {
 
 // AuthStatus defines model for AuthStatus.
 type AuthStatus struct {
+	// Authenticated Whether the request carries a valid, unexpired session cookie.
+	// False for no cookie, an expired one or one that doesn't match a
+	// session - still a 200, so a client can ask without being
+	// answered with a 401.
+	Authenticated bool `json:"authenticated"`
+
 	// Bootstrapped Whether an admin account has been created yet.
 	Bootstrapped bool `json:"bootstrapped"`
 }
