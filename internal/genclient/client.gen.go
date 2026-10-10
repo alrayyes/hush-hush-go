@@ -910,6 +910,13 @@ type QueryAuditLogParams struct {
 	// (design.md's "Audit log UI" decision).
 	After *int64 `form:"after,omitempty" json:"after,omitempty"`
 
+	// Before Cursor: restrict to entries recorded before this entry's own
+	// id. The counterpart of `after` for `order=desc` - pass the
+	// last id of the page you have to get the next, older one.
+	// Combine with `after` to bound an id window. Id-based for the
+	// same reason as `after`.
+	Before *int64 `form:"before,omitempty" json:"before,omitempty"`
+
 	// Order Sort direction by entry id. `asc` (the default) is oldest
 	// first; `desc` is newest first, so combined with limit it
 	// returns the newest entries - `?object_id=x&order=desc&limit=3`
@@ -2162,6 +2169,18 @@ func NewQueryAuditLogRequest(server string, params *QueryAuditLogParams) (*http.
 		if params.After != nil {
 
 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "after", *params.After, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: "int64"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Before != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "before", *params.Before, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: "int64"}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
