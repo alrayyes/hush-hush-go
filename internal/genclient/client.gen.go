@@ -856,6 +856,9 @@ type CsrfToken = string
 // CsrfTokenOptional defines model for csrfTokenOptional.
 type CsrfTokenOptional = string
 
+// ObjectConsumer defines model for objectConsumer.
+type ObjectConsumer = string
+
 // ObjectId defines model for objectId.
 type ObjectId = openapi_types.UUID
 
@@ -1138,6 +1141,9 @@ type DeleteObjectParams struct {
 	// Id The UUID of one variant, when the name has several. Without it a name with one variant is addressed as always, and a name with several is a 409. It has to belong to that name, or the answer is 404.
 	Id *ObjectId `form:"id,omitempty" json:"id,omitempty"`
 
+	// Consumer The name of a consumer, to pick the one variant whose consumers include it, when the name has several. Use it instead of `id` when you know who reads the value and not its UUID. Sending both is a 400. A consumer that is in none of the name's variants is a 404. A consumer token's own consumer always wins over this.
+	Consumer *ObjectConsumer `form:"consumer,omitempty" json:"consumer,omitempty"`
+
 	// XCaller The caller's own identity - a repo or host name, whatever the
 	// caller wants attributed to it in the audit log. Not authenticated
 	// or verified: a courtesy label a caller presents about itself, not
@@ -1158,6 +1164,9 @@ type GetObjectParams struct {
 	// Id The UUID of one variant, when the name has several. Without it a name with one variant is addressed as always, and a name with several is a 409. It has to belong to that name, or the answer is 404.
 	Id *ObjectId `form:"id,omitempty" json:"id,omitempty"`
 
+	// Consumer The name of a consumer, to pick the one variant whose consumers include it, when the name has several. Use it instead of `id` when you know who reads the value and not its UUID. Sending both is a 400. A consumer that is in none of the name's variants is a 404. A consumer token's own consumer always wins over this.
+	Consumer *ObjectConsumer `form:"consumer,omitempty" json:"consumer,omitempty"`
+
 	// XCaller The caller's own identity - a repo or host name, whatever the
 	// caller wants attributed to it in the audit log. Not authenticated
 	// or verified: a courtesy label a caller presents about itself, not
@@ -1170,6 +1179,9 @@ type GetObjectParams struct {
 type PatchObjectParams struct {
 	// Id The UUID of one variant, when the name has several. Without it a name with one variant is addressed as always, and a name with several is a 409. It has to belong to that name, or the answer is 404.
 	Id *ObjectId `form:"id,omitempty" json:"id,omitempty"`
+
+	// Consumer The name of a consumer, to pick the one variant whose consumers include it, when the name has several. Use it instead of `id` when you know who reads the value and not its UUID. Sending both is a 400. A consumer that is in none of the name's variants is a 404. A consumer token's own consumer always wins over this.
+	Consumer *ObjectConsumer `form:"consumer,omitempty" json:"consumer,omitempty"`
 
 	// XCaller The caller's own identity - a repo or host name, whatever the
 	// caller wants attributed to it in the audit log. Not authenticated
@@ -1191,6 +1203,9 @@ type UpdateObjectParams struct {
 	// Id The UUID of one variant, when the name has several. Without it a name with one variant is addressed as always, and a name with several is a 409. It has to belong to that name, or the answer is 404.
 	Id *ObjectId `form:"id,omitempty" json:"id,omitempty"`
 
+	// Consumer The name of a consumer, to pick the one variant whose consumers include it, when the name has several. Use it instead of `id` when you know who reads the value and not its UUID. Sending both is a 400. A consumer that is in none of the name's variants is a 404. A consumer token's own consumer always wins over this.
+	Consumer *ObjectConsumer `form:"consumer,omitempty" json:"consumer,omitempty"`
+
 	// XCaller The caller's own identity - a repo or host name, whatever the
 	// caller wants attributed to it in the audit log. Not authenticated
 	// or verified: a courtesy label a caller presents about itself, not
@@ -1210,6 +1225,9 @@ type UpdateObjectParams struct {
 type GetObjectUsedByParams struct {
 	// Id The UUID of one variant, when the name has several. Without it a name with one variant is addressed as always, and a name with several is a 409. It has to belong to that name, or the answer is 404.
 	Id *ObjectId `form:"id,omitempty" json:"id,omitempty"`
+
+	// Consumer The name of a consumer, to pick the one variant whose consumers include it, when the name has several. Use it instead of `id` when you know who reads the value and not its UUID. Sending both is a 400. A consumer that is in none of the name's variants is a 404. A consumer token's own consumer always wins over this.
+	Consumer *ObjectConsumer `form:"consumer,omitempty" json:"consumer,omitempty"`
 }
 
 // ListTokensParams defines parameters for ListTokens.
@@ -3531,6 +3549,18 @@ func NewDeleteObjectRequest(server string, slug Slug, params *DeleteObjectParams
 
 		}
 
+		if params.Consumer != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "consumer", *params.Consumer, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
 		if encoded := queryValues.Encode(); encoded != "" {
 			rawQueryFragments = append(rawQueryFragments, encoded)
 		}
@@ -3618,6 +3648,18 @@ func NewGetObjectRequest(server string, slug Slug, params *GetObjectParams) (*ht
 
 		}
 
+		if params.Consumer != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "consumer", *params.Consumer, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
 		if encoded := queryValues.Encode(); encoded != "" {
 			rawQueryFragments = append(rawQueryFragments, encoded)
 		}
@@ -3696,6 +3738,18 @@ func NewPatchObjectRequestWithBody(server string, slug Slug, params *PatchObject
 		if params.Id != nil {
 
 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "id", *params.Id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Consumer != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "consumer", *params.Consumer, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -3805,6 +3859,18 @@ func NewUpdateObjectRequestWithBody(server string, slug Slug, params *UpdateObje
 
 		}
 
+		if params.Consumer != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "consumer", *params.Consumer, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
 		if encoded := queryValues.Encode(); encoded != "" {
 			rawQueryFragments = append(rawQueryFragments, encoded)
 		}
@@ -3885,6 +3951,18 @@ func NewGetObjectUsedByRequest(server string, slug Slug, params *GetObjectUsedBy
 		if params.Id != nil {
 
 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "id", *params.Id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Consumer != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "consumer", *params.Consumer, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
