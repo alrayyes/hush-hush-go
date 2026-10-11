@@ -1,5 +1,17 @@
 # Changelog
 
+## [4.5.0](https://github.com/alrayyes/hush-hush-go/compare/v4.4.6...v4.5.0) (2026-10-11)
+
+
+### Features
+
+* address one variant of a name with WithVariantID ([740bb39](https://github.com/alrayyes/hush-hush-go/commit/740bb397bfb23d5941829b12ea7f515125270e18))
+
+
+### Bug Fixes
+
+* regenerate client from updated hush-hush spec ([#259](https://github.com/alrayyes/hush-hush-go/issues/259)) ([fc7106b](https://github.com/alrayyes/hush-hush-go/commit/fc7106bddc5d7b7a2699a2d7cf27ff1ef7ce7a7b))
+
 ## [4.4.6](https://github.com/alrayyes/hush-hush-go/compare/v4.4.5...v4.4.6) (2026-10-11)
 
 
