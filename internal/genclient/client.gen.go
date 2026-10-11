@@ -563,6 +563,21 @@ type OwnerIdentity struct {
 	PublicKey *string `json:"public_key,omitempty"`
 }
 
+// PatchObjectRequest At least one of `description`, `slug` or `tags` is required; a field
+// left out leaves that aspect of the object unchanged.
+type PatchObjectRequest struct {
+	// Description Replaces the description. An empty string clears it.
+	Description *string `json:"description,omitempty"`
+
+	// Slug Renames the object, in the same shape as `ObjectSlug`. Every
+	// variant of the name moves to the new slug. It must not already
+	// have objects.
+	Slug *string `json:"slug,omitempty"`
+
+	// Tags Replaces the object's tags. An empty array clears them.
+	Tags *Tags `json:"tags,omitempty"`
+}
+
 // Ready defines model for Ready.
 type Ready struct {
 	Status ReadyStatus `json:"status"`
@@ -1144,6 +1159,26 @@ type GetObjectParams struct {
 	XCaller *Caller `json:"X-Caller,omitempty"`
 }
 
+// PatchObjectParams defines parameters for PatchObject.
+type PatchObjectParams struct {
+	// Id The UUID of one variant, when the name has several. Without it a name with one variant is addressed as always, and a name with several is a 409. It has to belong to that name, or the answer is 404.
+	Id *ObjectId `form:"id,omitempty" json:"id,omitempty"`
+
+	// XCaller The caller's own identity - a repo or host name, whatever the
+	// caller wants attributed to it in the audit log. Not authenticated
+	// or verified: a courtesy label a caller presents about itself, not
+	// an identity check the service performs. Absent means the
+	// resulting audit log entry's caller field is empty.
+	XCaller *Caller `json:"X-Caller,omitempty"`
+
+	// XCSRFToken The current session's own CSRF token - required when the request
+	// is authenticated by a session, not present or checked when it's
+	// authenticated by a bearer token instead (which has no session, and
+	// so no CSRF token to send). See `csrfToken` for the always-required
+	// form used where session auth is the only option.
+	XCSRFToken *CsrfTokenOptional `json:"X-CSRF-Token,omitempty"`
+}
+
 // UpdateObjectParams defines parameters for UpdateObject.
 type UpdateObjectParams struct {
 	// Id The UUID of one variant, when the name has several. Without it a name with one variant is addressed as always, and a name with several is a 409. It has to belong to that name, or the answer is 404.
@@ -1245,6 +1280,9 @@ type McpJSONRequestBody = McpJSONBody
 
 // CreateObjectJSONRequestBody defines body for CreateObject for application/json ContentType.
 type CreateObjectJSONRequestBody = CreateObjectRequest
+
+// PatchObjectJSONRequestBody defines body for PatchObject for application/json ContentType.
+type PatchObjectJSONRequestBody = PatchObjectRequest
 
 // UpdateObjectJSONRequestBody defines body for UpdateObject for application/json ContentType.
 type UpdateObjectJSONRequestBody = UpdateObjectRequest
@@ -1488,6 +1526,11 @@ type ClientInterface interface {
 
 	// GetObject request
 	GetObject(ctx context.Context, slug Slug, params *GetObjectParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PatchObjectWithBody request with any body
+	PatchObjectWithBody(ctx context.Context, slug Slug, params *PatchObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PatchObject(ctx context.Context, slug Slug, params *PatchObjectParams, body PatchObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateObjectWithBody request with any body
 	UpdateObjectWithBody(ctx context.Context, slug Slug, params *UpdateObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1942,6 +1985,30 @@ func (c *Client) DeleteObject(ctx context.Context, slug Slug, params *DeleteObje
 
 func (c *Client) GetObject(ctx context.Context, slug Slug, params *GetObjectParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetObjectRequest(c.Server, slug, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PatchObjectWithBody(ctx context.Context, slug Slug, params *PatchObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPatchObjectRequestWithBody(c.Server, slug, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PatchObject(ctx context.Context, slug Slug, params *PatchObjectParams, body PatchObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPatchObjectRequest(c.Server, slug, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3573,6 +3640,106 @@ func NewGetObjectRequest(server string, slug Slug, params *GetObjectParams) (*ht
 	return req, nil
 }
 
+// NewPatchObjectRequest calls the generic PatchObject builder with application/json body
+func NewPatchObjectRequest(server string, slug Slug, params *PatchObjectParams, body PatchObjectJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPatchObjectRequestWithBody(server, slug, params, "application/json", bodyReader)
+}
+
+// NewPatchObjectRequestWithBody generates requests for PatchObject with any type of body
+func NewPatchObjectRequestWithBody(server string, slug Slug, params *PatchObjectParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "slug", slug, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/objects/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Id != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "id", *params.Id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.XCaller != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "X-Caller", *params.XCaller, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("X-Caller", headerParam0)
+		}
+
+		if params.XCSRFToken != nil {
+			var headerParam1 string
+
+			headerParam1, err = runtime.StyleParamWithOptions("simple", false, "X-CSRF-Token", *params.XCSRFToken, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("X-CSRF-Token", headerParam1)
+		}
+
+	}
+
+	return req, nil
+}
+
 // NewUpdateObjectRequest calls the generic UpdateObject builder with application/json body
 func NewUpdateObjectRequest(server string, slug Slug, params *UpdateObjectParams, body UpdateObjectJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -4175,6 +4342,11 @@ type ClientWithResponsesInterface interface {
 
 	// GetObjectWithResponse request
 	GetObjectWithResponse(ctx context.Context, slug Slug, params *GetObjectParams, reqEditors ...RequestEditorFn) (*GetObjectResponse, error)
+
+	// PatchObjectWithBodyWithResponse request with any body
+	PatchObjectWithBodyWithResponse(ctx context.Context, slug Slug, params *PatchObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PatchObjectResponse, error)
+
+	PatchObjectWithResponse(ctx context.Context, slug Slug, params *PatchObjectParams, body PatchObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*PatchObjectResponse, error)
 
 	// UpdateObjectWithBodyWithResponse request with any body
 	UpdateObjectWithBodyWithResponse(ctx context.Context, slug Slug, params *UpdateObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateObjectResponse, error)
@@ -5087,6 +5259,42 @@ func (r GetObjectResponse) ContentType() string {
 	return ""
 }
 
+type PatchObjectResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ObjectMetadata
+	JSON400      *BadRequest
+	JSON401      *Unauthorized
+	JSON404      *NotFound
+	JSON409      *VariantConflict
+	JSON413      *PayloadTooLarge
+	JSON422      *UnprocessableEntity
+}
+
+// Status returns HTTPResponse.Status
+func (r PatchObjectResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PatchObjectResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PatchObjectResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type UpdateObjectResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -5666,6 +5874,23 @@ func (c *ClientWithResponses) GetObjectWithResponse(ctx context.Context, slug Sl
 		return nil, err
 	}
 	return ParseGetObjectResponse(rsp)
+}
+
+// PatchObjectWithBodyWithResponse request with arbitrary body returning *PatchObjectResponse
+func (c *ClientWithResponses) PatchObjectWithBodyWithResponse(ctx context.Context, slug Slug, params *PatchObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PatchObjectResponse, error) {
+	rsp, err := c.PatchObjectWithBody(ctx, slug, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePatchObjectResponse(rsp)
+}
+
+func (c *ClientWithResponses) PatchObjectWithResponse(ctx context.Context, slug Slug, params *PatchObjectParams, body PatchObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*PatchObjectResponse, error) {
+	rsp, err := c.PatchObject(ctx, slug, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePatchObjectResponse(rsp)
 }
 
 // UpdateObjectWithBodyWithResponse request with arbitrary body returning *UpdateObjectResponse
@@ -6946,6 +7171,74 @@ func ParseGetObjectResponse(rsp *http.Response) (*GetObjectResponse, error) {
 			return nil, err
 		}
 		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePatchObjectResponse parses an HTTP response from a PatchObjectWithResponse call
+func ParsePatchObjectResponse(rsp *http.Response) (*PatchObjectResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PatchObjectResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ObjectMetadata
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest VariantConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 413:
+		var dest PayloadTooLarge
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON413 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
 		var dest UnprocessableEntity
