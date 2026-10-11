@@ -442,3 +442,124 @@ func TestClient_VariantID_MalformedIsRefusedBeforeAnyRequest(t *testing.T) {
 		t.Error("a malformed variant id still reached the server")
 	}
 }
+
+// WithConsumer picks the variant that names a consumer, so a caller who
+// doesn't know the UUID can still address one variant of a shared name.
+func TestClient_Consumer_IsSentOnEveryObjectCall(t *testing.T) {
+	var gotQueries []url.Values
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotQueries = append(gotQueries, r.URL.Query())
+		switch {
+		case r.Method == http.MethodDelete:
+			w.WriteHeader(http.StatusNoContent)
+		case r.Method == http.MethodPut:
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(hushhush.ObjectMetadata{Slug: "release_token"})
+		case r.URL.Path == "/objects/release_token/used-by":
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(hushhush.UsedBy{})
+		default:
+			_, _ = w.Write([]byte("sealed"))
+		}
+	}))
+	defer srv.Close()
+
+	client, err := hushhush.NewClient(srv.URL, hushhush.WithAPIKey("k"))
+	if err != nil {
+		t.Fatalf("NewClient: %v", err)
+	}
+	ctx := context.Background()
+	withConsumer := hushhush.WithConsumer("alrayyes/dotfiles")
+
+	if _, err := client.GetObject(ctx, "release_token", "", withConsumer); err != nil {
+		t.Fatalf("GetObject: %v", err)
+	}
+	if _, err := client.UpdateObject(ctx, "release_token", hushhush.UpdateObjectRequest{Value: []byte("v")}, "", withConsumer); err != nil {
+		t.Fatalf("UpdateObject: %v", err)
+	}
+	if err := client.DeleteObject(ctx, "release_token", "", withConsumer); err != nil {
+		t.Fatalf("DeleteObject: %v", err)
+	}
+	if _, err := client.GetObjectUsedBy(ctx, "release_token", withConsumer); err != nil {
+		t.Fatalf("GetObjectUsedBy: %v", err)
+	}
+
+	if len(gotQueries) != 4 {
+		t.Fatalf("server saw %d calls, want 4", len(gotQueries))
+	}
+	for i, q := range gotQueries {
+		if got := q.Get("consumer"); got != "alrayyes/dotfiles" {
+			t.Errorf("call %d sent consumer = %q, want alrayyes/dotfiles", i, got)
+		}
+		if q.Has("id") {
+			t.Errorf("call %d sent an id as well", i)
+		}
+	}
+}
+
+func TestClient_Consumer_IsLeftOutWhenNotGiven(t *testing.T) {
+	var gotRawQuery string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotRawQuery = r.URL.RawQuery
+		_, _ = w.Write([]byte("sealed"))
+	}))
+	defer srv.Close()
+
+	client, err := hushhush.NewClient(srv.URL)
+	if err != nil {
+		t.Fatalf("NewClient: %v", err)
+	}
+	if _, err := client.GetObject(context.Background(), "release_token", ""); err != nil {
+		t.Fatalf("GetObject: %v", err)
+	}
+	if gotRawQuery != "" {
+		t.Errorf("query = %q, want none", gotRawQuery)
+	}
+}
+
+// The server settles id plus consumer (a 400), so the SDK sends both and
+// hands back its message instead of inventing a second rule.
+func TestClient_Consumer_WithAnIDLetsTheServerRefuseIt(t *testing.T) {
+	var gotQuery url.Values
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotQuery = r.URL.Query()
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{"error":"pass id or consumer to pick a variant, not both"}`))
+	}))
+	defer srv.Close()
+
+	client, err := hushhush.NewClient(srv.URL)
+	if err != nil {
+		t.Fatalf("NewClient: %v", err)
+	}
+	_, err = client.GetObject(context.Background(), "release_token", "", hushhush.WithVariantID(variantA), hushhush.WithConsumer("a"))
+
+	var apiErr *hushhush.APIError
+	if !errors.As(err, &apiErr) || apiErr.StatusCode != http.StatusBadRequest || apiErr.Message == "" {
+		t.Fatalf("err = %v, want a 400 *APIError carrying the server's message", err)
+	}
+	if gotQuery.Get("id") != variantA || gotQuery.Get("consumer") != "a" {
+		t.Errorf("query = %v, want both id and consumer sent", gotQuery)
+	}
+}
+
+func TestClient_Consumer_NoVariantNamingItComesBackAsA404(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"error":"unknown object"}`))
+	}))
+	defer srv.Close()
+
+	client, err := hushhush.NewClient(srv.URL)
+	if err != nil {
+		t.Fatalf("NewClient: %v", err)
+	}
+	_, err = client.GetObject(context.Background(), "release_token", "", hushhush.WithConsumer("nobody"))
+
+	var apiErr *hushhush.APIError
+	if !errors.As(err, &apiErr) || apiErr.StatusCode != http.StatusNotFound {
+		t.Fatalf("err = %v, want a 404 *APIError", err)
+	}
+}

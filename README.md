@@ -77,7 +77,9 @@ A name can hold a different value per consumer, each under its own UUID
 (`ObjectMetadata.Id`). `GetObject`, `UpdateObject`, `DeleteObject` and
 `GetObjectUsedBy` take `hushhush.WithVariantID(id)` to address one of them;
 without it, a name with several variants is a 409 `*APIError`, and an ID that
-doesn't belong to the name is a 404. The
+doesn't belong to the name is a 404. `hushhush.WithConsumer(name)` picks the
+variant that names a consumer instead, when the UUID isn't to hand; a consumer
+no variant names is a 404, and giving both options is the server's 400. The
 consumer directory (`ListConsumers`, `AddConsumer`, `UpdateConsumer`,
 `DeleteConsumer`, and `GetConsumerPublicKey` for resolving one consumer's
 registered age public key by exact name) always requires a credential, the

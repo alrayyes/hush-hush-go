@@ -145,6 +145,7 @@ type ObjectOption func(*objectConfig)
 
 type objectConfig struct {
 	variantID string
+	consumer  string
 }
 
 // WithVariantID addresses one variant of a name that has several. A name can
@@ -157,23 +158,43 @@ func WithVariantID(id string) ObjectOption {
 	return func(c *objectConfig) { c.variantID = id }
 }
 
-// variantParam turns the options into the generated client's id parameter,
-// nil when no variant was named.
-func variantParam(opts []ObjectOption) (*genclient.ObjectId, error) {
+// WithConsumer addresses the one variant of a name whose consumers include
+// consumer, for a caller that knows who reads the value and not its UUID. A
+// consumer that no variant names is a 404 *APIError. Combining it with
+// WithVariantID is the server's 400, returned as an *APIError with its
+// message. Without either, a name with one variant is addressed as always.
+func WithConsumer(consumer string) ObjectOption {
+	return func(c *objectConfig) { c.consumer = consumer }
+}
+
+// variantSelector is the generated client's two ways to pick a variant, each
+// nil when not given.
+type variantSelector struct {
+	id       *genclient.ObjectId
+	consumer *genclient.ObjectConsumer
+}
+
+// variantParams turns the options into the generated client's id and
+// consumer parameters.
+func variantParams(opts []ObjectOption) (variantSelector, error) {
 	var cfg objectConfig
 	for _, opt := range opts {
 		opt(&cfg)
 	}
-	if cfg.variantID == "" {
-		return nil, nil
+
+	var sel variantSelector
+	if cfg.consumer != "" {
+		sel.consumer = &cfg.consumer
+	}
+	if cfg.variantID != "" {
+		var id genclient.ObjectId
+		if err := id.UnmarshalText([]byte(cfg.variantID)); err != nil {
+			return variantSelector{}, fmt.Errorf("hushhush: variant id %q is not a UUID: %w", cfg.variantID, err)
+		}
+		sel.id = &id
 	}
 
-	var id genclient.ObjectId
-	if err := id.UnmarshalText([]byte(cfg.variantID)); err != nil {
-		return nil, fmt.Errorf("hushhush: variant id %q is not a UUID: %w", cfg.variantID, err)
-	}
-
-	return &id, nil
+	return sel, nil
 }
 
 // CreateObject stores an already-sealed value under a new object id.
@@ -197,11 +218,11 @@ func (c *Client) CreateObject(ctx context.Context, req CreateObjectRequest, call
 // GetObject fetches an object's sealed ciphertext exactly as stored — this
 // SDK never decrypts it, the same as the server. No credential is required.
 func (c *Client) GetObject(ctx context.Context, id string, caller string, opts ...ObjectOption) ([]byte, error) {
-	variant, err := variantParam(opts)
+	sel, err := variantParams(opts)
 	if err != nil {
 		return nil, err
 	}
-	params := &genclient.GetObjectParams{Id: variant}
+	params := &genclient.GetObjectParams{Id: sel.id, Consumer: sel.consumer}
 	if caller != "" {
 		params.XCaller = &caller
 	}
@@ -218,11 +239,11 @@ func (c *Client) GetObject(ctx context.Context, id string, caller string, opts .
 // UpdateObject replaces the stored ciphertext for an existing object. The
 // object's id and used-by metadata are unchanged. Requires a credential.
 func (c *Client) UpdateObject(ctx context.Context, id string, req UpdateObjectRequest, caller string, opts ...ObjectOption) (*ObjectMetadata, error) {
-	variant, err := variantParam(opts)
+	sel, err := variantParams(opts)
 	if err != nil {
 		return nil, err
 	}
-	params := &genclient.UpdateObjectParams{Id: variant}
+	params := &genclient.UpdateObjectParams{Id: sel.id, Consumer: sel.consumer}
 	if caller != "" {
 		params.XCaller = &caller
 	}
@@ -238,11 +259,11 @@ func (c *Client) UpdateObject(ctx context.Context, id string, req UpdateObjectRe
 
 // DeleteObject permanently removes an object. Requires a credential.
 func (c *Client) DeleteObject(ctx context.Context, id string, caller string, opts ...ObjectOption) error {
-	variant, err := variantParam(opts)
+	sel, err := variantParams(opts)
 	if err != nil {
 		return err
 	}
-	params := &genclient.DeleteObjectParams{Id: variant}
+	params := &genclient.DeleteObjectParams{Id: sel.id, Consumer: sel.consumer}
 	if caller != "" {
 		params.XCaller = &caller
 	}
@@ -259,11 +280,11 @@ func (c *Client) DeleteObject(ctx context.Context, id string, caller string, opt
 // GetObjectUsedBy returns the recorded list of consumers for an object. No
 // credential is required.
 func (c *Client) GetObjectUsedBy(ctx context.Context, id string, opts ...ObjectOption) (*UsedBy, error) {
-	variant, err := variantParam(opts)
+	sel, err := variantParams(opts)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := c.api.GetObjectUsedByWithResponse(ctx, id, &genclient.GetObjectUsedByParams{Id: variant}, c.authEditor)
+	resp, err := c.api.GetObjectUsedByWithResponse(ctx, id, &genclient.GetObjectUsedByParams{Id: sel.id, Consumer: sel.consumer}, c.authEditor)
 	if err != nil {
 		return nil, err
 	}
