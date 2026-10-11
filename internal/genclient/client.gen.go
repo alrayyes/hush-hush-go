@@ -50,13 +50,16 @@ func (e AuditLogEntryAction) Valid() bool {
 
 // Defines values for AuditLogEntryActorType.
 const (
-	Session AuditLogEntryActorType = "session"
-	Token   AuditLogEntryActorType = "token"
+	ConsumerToken AuditLogEntryActorType = "consumer_token"
+	Session       AuditLogEntryActorType = "session"
+	Token         AuditLogEntryActorType = "token"
 )
 
 // Valid indicates whether the value is a known member of the AuditLogEntryActorType enum.
 func (e AuditLogEntryActorType) Valid() bool {
 	switch e {
+	case ConsumerToken:
+		return true
 	case Session:
 		return true
 	case Token:
