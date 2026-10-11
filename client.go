@@ -139,6 +139,43 @@ func (c *Client) GetOwnerIdentity(ctx context.Context) (*OwnerIdentity, error) {
 	return resp.JSON200, nil
 }
 
+// ObjectOption adjusts one call that addresses an existing object by name:
+// GetObject, UpdateObject, DeleteObject and GetObjectUsedBy.
+type ObjectOption func(*objectConfig)
+
+type objectConfig struct {
+	variantID string
+}
+
+// WithVariantID addresses one variant of a name that has several. A name can
+// hold a different value per consumer, each under its own UUID, which
+// ObjectMetadata.Id returns. Without it a name with one variant is addressed
+// as always, and a name with several is a 409 *APIError. An id that doesn't
+// belong to the name is a 404. A malformed id is refused before any request
+// is sent.
+func WithVariantID(id string) ObjectOption {
+	return func(c *objectConfig) { c.variantID = id }
+}
+
+// variantParam turns the options into the generated client's id parameter,
+// nil when no variant was named.
+func variantParam(opts []ObjectOption) (*genclient.ObjectId, error) {
+	var cfg objectConfig
+	for _, opt := range opts {
+		opt(&cfg)
+	}
+	if cfg.variantID == "" {
+		return nil, nil
+	}
+
+	var id genclient.ObjectId
+	if err := id.UnmarshalText([]byte(cfg.variantID)); err != nil {
+		return nil, fmt.Errorf("hushhush: variant id %q is not a UUID: %w", cfg.variantID, err)
+	}
+
+	return &id, nil
+}
+
 // CreateObject stores an already-sealed value under a new object id.
 // Requires a credential (see WithAPIKey/HUSH_HUSH_API_KEY). caller, if
 // non-empty, is recorded in the audit log as the X-Caller header.
@@ -159,8 +196,12 @@ func (c *Client) CreateObject(ctx context.Context, req CreateObjectRequest, call
 
 // GetObject fetches an object's sealed ciphertext exactly as stored — this
 // SDK never decrypts it, the same as the server. No credential is required.
-func (c *Client) GetObject(ctx context.Context, id string, caller string) ([]byte, error) {
-	params := &genclient.GetObjectParams{}
+func (c *Client) GetObject(ctx context.Context, id string, caller string, opts ...ObjectOption) ([]byte, error) {
+	variant, err := variantParam(opts)
+	if err != nil {
+		return nil, err
+	}
+	params := &genclient.GetObjectParams{Id: variant}
 	if caller != "" {
 		params.XCaller = &caller
 	}
@@ -176,8 +217,12 @@ func (c *Client) GetObject(ctx context.Context, id string, caller string) ([]byt
 
 // UpdateObject replaces the stored ciphertext for an existing object. The
 // object's id and used-by metadata are unchanged. Requires a credential.
-func (c *Client) UpdateObject(ctx context.Context, id string, req UpdateObjectRequest, caller string) (*ObjectMetadata, error) {
-	params := &genclient.UpdateObjectParams{}
+func (c *Client) UpdateObject(ctx context.Context, id string, req UpdateObjectRequest, caller string, opts ...ObjectOption) (*ObjectMetadata, error) {
+	variant, err := variantParam(opts)
+	if err != nil {
+		return nil, err
+	}
+	params := &genclient.UpdateObjectParams{Id: variant}
 	if caller != "" {
 		params.XCaller = &caller
 	}
@@ -192,8 +237,12 @@ func (c *Client) UpdateObject(ctx context.Context, id string, req UpdateObjectRe
 }
 
 // DeleteObject permanently removes an object. Requires a credential.
-func (c *Client) DeleteObject(ctx context.Context, id string, caller string) error {
-	params := &genclient.DeleteObjectParams{}
+func (c *Client) DeleteObject(ctx context.Context, id string, caller string, opts ...ObjectOption) error {
+	variant, err := variantParam(opts)
+	if err != nil {
+		return err
+	}
+	params := &genclient.DeleteObjectParams{Id: variant}
 	if caller != "" {
 		params.XCaller = &caller
 	}
@@ -209,9 +258,12 @@ func (c *Client) DeleteObject(ctx context.Context, id string, caller string) err
 
 // GetObjectUsedBy returns the recorded list of consumers for an object. No
 // credential is required.
-func (c *Client) GetObjectUsedBy(ctx context.Context, id string) (*UsedBy, error) {
-	// No variant id: a name with one variant is addressed as it always was.
-	resp, err := c.api.GetObjectUsedByWithResponse(ctx, id, &genclient.GetObjectUsedByParams{}, c.authEditor)
+func (c *Client) GetObjectUsedBy(ctx context.Context, id string, opts ...ObjectOption) (*UsedBy, error) {
+	variant, err := variantParam(opts)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.api.GetObjectUsedByWithResponse(ctx, id, &genclient.GetObjectUsedByParams{Id: variant}, c.authEditor)
 	if err != nil {
 		return nil, err
 	}
