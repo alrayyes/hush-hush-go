@@ -140,7 +140,9 @@ type AddConsumerRequest struct {
 
 // AuditActorOption defines model for AuditActorOption.
 type AuditActorOption struct {
-	// Label What to show the user - "admin", "token:<id>", or "none".
+	// Label What to show the user - "admin", "token:<id>" for a write token,
+	// "consumer-token:<id>" for a consumer token, or "none" for an
+	// unauthenticated read.
 	Label string `json:"label"`
 
 	// Value What to send back as the `actor` query parameter to select this actor.
@@ -197,7 +199,9 @@ type AuditLogEntryActorType string
 
 // AuditLogFilterOptions defines model for AuditLogFilterOptions.
 type AuditLogFilterOptions struct {
-	// Actors Every distinct actor currently recorded in the audit log.
+	// Actors Every distinct actor currently recorded in the audit log, one
+	// option each. Each `value` is unique, so a client can key a list by
+	// it. `none` appears at most once and means an unauthenticated read.
 	Actors []AuditActorOption `json:"actors"`
 
 	// Callers Every distinct caller currently recorded in the audit log.
