@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.6.0](https://github.com/alrayyes/hush-hush-go/compare/v4.5.2...v4.6.0) (2026-10-11)
+
+
+### Features
+
+* **client:** pick a variant by consumer with WithConsumer ([5c59ee7](https://github.com/alrayyes/hush-hush-go/commit/5c59ee7050bde5171d6d360a09bf18cc1ddf4a23))
+
 ## [4.5.2](https://github.com/alrayyes/hush-hush-go/compare/v4.5.1...v4.5.2) (2026-10-11)
 
 
