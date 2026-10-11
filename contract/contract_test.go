@@ -201,13 +201,16 @@ func TestContract_AddConsumer(t *testing.T) {
 
 func TestContract_UpdateConsumer_RegistersPublicKey(t *testing.T) {
 	client := mustClient(t)
-	publicKey := "age1exampleplaceholderpublickey"
+	// The mock answers with the spec's example, not an echo of the request, so
+	// this checks the response carries a key rather than which one. A real
+	// server refuses anything that isn't an age recipient, so send one.
+	publicKey := "age1xl8amwv0vaxfk3gkrsgfv8l9nwkfuyqf448jwauhkn4vsw9jfqzq5290c0"
 	entry, err := client.UpdateConsumer(context.Background(), "homelab/vps-docker", hushhush.UpdateConsumerRequest{PublicKey: &publicKey})
 	if err != nil {
 		t.Fatalf("UpdateConsumer: %v", err)
 	}
-	if entry.PublicKey == nil || *entry.PublicKey != publicKey {
-		t.Errorf("PublicKey = %v, want %q", entry.PublicKey, publicKey)
+	if entry.PublicKey == nil || *entry.PublicKey == "" {
+		t.Error("PublicKey is empty, want the mock spec's registered public key")
 	}
 }
 
