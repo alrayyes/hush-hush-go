@@ -327,3 +327,118 @@ func TestClient_ListObjectsFiltered_RequiresCredential(t *testing.T) {
 		t.Errorf("err = %v, want an *APIError with status 401", err)
 	}
 }
+
+const variantA = "0b8e1c1e-3f5a-4d0b-8a1f-2c9d7e6b5a41"
+
+// A name can hold a different value per consumer, each under its own UUID
+// (hush-hush ADR 33). The wrappers take the variant id as an option, so a
+// caller that passes none sends exactly what it always did.
+func TestClient_VariantID_IsSentOnEveryObjectCall(t *testing.T) {
+	var gotQueries []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotQueries = append(gotQueries, r.URL.Query().Get("id"))
+		switch {
+		case r.Method == http.MethodDelete:
+			w.WriteHeader(http.StatusNoContent)
+		case r.Method == http.MethodPut:
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(hushhush.ObjectMetadata{Slug: "release_token"})
+		case r.URL.Path == "/objects/release_token/used-by":
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(hushhush.UsedBy{})
+		default:
+			_, _ = w.Write([]byte("sealed"))
+		}
+	}))
+	defer srv.Close()
+
+	client, err := hushhush.NewClient(srv.URL, hushhush.WithAPIKey("k"))
+	if err != nil {
+		t.Fatalf("NewClient: %v", err)
+	}
+	ctx := context.Background()
+	withID := hushhush.WithVariantID(variantA)
+
+	if _, err := client.GetObject(ctx, "release_token", "", withID); err != nil {
+		t.Fatalf("GetObject: %v", err)
+	}
+	if _, err := client.UpdateObject(ctx, "release_token", hushhush.UpdateObjectRequest{Value: []byte("v")}, "", withID); err != nil {
+		t.Fatalf("UpdateObject: %v", err)
+	}
+	if err := client.DeleteObject(ctx, "release_token", "", withID); err != nil {
+		t.Fatalf("DeleteObject: %v", err)
+	}
+	if _, err := client.GetObjectUsedBy(ctx, "release_token", withID); err != nil {
+		t.Fatalf("GetObjectUsedBy: %v", err)
+	}
+
+	for i, got := range gotQueries {
+		if got != variantA {
+			t.Errorf("call %d sent id = %q, want %q", i, got, variantA)
+		}
+	}
+	if len(gotQueries) != 4 {
+		t.Errorf("server saw %d calls, want 4", len(gotQueries))
+	}
+}
+
+func TestClient_VariantID_IsLeftOutWhenNotGiven(t *testing.T) {
+	var gotRawQuery string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotRawQuery = r.URL.RawQuery
+		_, _ = w.Write([]byte("sealed"))
+	}))
+	defer srv.Close()
+
+	client, err := hushhush.NewClient(srv.URL)
+	if err != nil {
+		t.Fatalf("NewClient: %v", err)
+	}
+	if _, err := client.GetObject(context.Background(), "release_token", ""); err != nil {
+		t.Fatalf("GetObject: %v", err)
+	}
+	if gotRawQuery != "" {
+		t.Errorf("query = %q, want none", gotRawQuery)
+	}
+}
+
+func TestClient_VariantID_ServerRefusalsComeBackAsAPIErrors(t *testing.T) {
+	for _, status := range []int{http.StatusConflict, http.StatusNotFound} {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(status)
+			_, _ = w.Write([]byte(`{"error":"name has several variants; pass id to say which"}`))
+		}))
+
+		client, err := hushhush.NewClient(srv.URL)
+		if err != nil {
+			t.Fatalf("NewClient: %v", err)
+		}
+		_, err = client.GetObject(context.Background(), "release_token", "", hushhush.WithVariantID(variantA))
+
+		var apiErr *hushhush.APIError
+		if !errors.As(err, &apiErr) || apiErr.StatusCode != status {
+			t.Errorf("status %d: err = %v, want an *APIError with that status", status, err)
+		} else if apiErr.Message == "" {
+			t.Errorf("status %d: the server's message was dropped", status)
+		}
+		srv.Close()
+	}
+}
+
+func TestClient_VariantID_MalformedIsRefusedBeforeAnyRequest(t *testing.T) {
+	called := false
+	srv := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { called = true }))
+	defer srv.Close()
+
+	client, err := hushhush.NewClient(srv.URL)
+	if err != nil {
+		t.Fatalf("NewClient: %v", err)
+	}
+	if _, err := client.GetObject(context.Background(), "release_token", "", hushhush.WithVariantID("not-a-uuid")); err == nil {
+		t.Error("GetObject with a malformed variant id returned no error")
+	}
+	if called {
+		t.Error("a malformed variant id still reached the server")
+	}
+}

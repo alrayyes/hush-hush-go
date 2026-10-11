@@ -72,7 +72,12 @@ func main() {
 
 The API key is only required for write operations (create/update/delete);
 reads (get, used-by, audit-log query) work without one. `caller`, the last
-argument to most methods, is optional — pass `""` to leave it unset. The
+argument to most methods, is optional — pass `""` to leave it unset.
+A name can hold a different value per consumer, each under its own UUID
+(`ObjectMetadata.Id`). `GetObject`, `UpdateObject`, `DeleteObject` and
+`GetObjectUsedBy` take `hushhush.WithVariantID(id)` to address one of them;
+without it, a name with several variants is a 409 `*APIError`, and an ID that
+doesn't belong to the name is a 404. The
 consumer directory (`ListConsumers`, `AddConsumer`, `UpdateConsumer`,
 `DeleteConsumer`, and `GetConsumerPublicKey` for resolving one consumer's
 registered age public key by exact name) always requires a credential, the
