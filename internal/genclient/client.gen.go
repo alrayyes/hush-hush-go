@@ -181,7 +181,10 @@ type AuditLogEntry struct {
 	Ip string `json:"ip"`
 
 	// ObjectId A caller-chosen, unique identifier for an object - what every
-	// documented request path (URL, CLI, API) addresses it by. The
+	// documented request path (URL, CLI, API) addresses it by. Letters of
+	// either case, digits, `_` and `-`, starting with a letter or digit;
+	// names are case-sensitive, so `Api_Token` and `api_token` are two
+	// secrets. Create and rename follow the same rule. The
 	// object's internal id is a separate, opaque value never exposed to
 	// or accepted from a caller (specs/secret-objects/spec.md's
 	// "Internal id decoupled from user-facing slug" requirement).
@@ -360,7 +363,10 @@ type CreateObjectRequest struct {
 	KeepReadableCopy *KeepReadableCopy `json:"keep_readable_copy,omitempty"`
 
 	// Slug A caller-chosen, unique identifier for an object - what every
-	// documented request path (URL, CLI, API) addresses it by. The
+	// documented request path (URL, CLI, API) addresses it by. Letters of
+	// either case, digits, `_` and `-`, starting with a letter or digit;
+	// names are case-sensitive, so `Api_Token` and `api_token` are two
+	// secrets. Create and rename follow the same rule. The
 	// object's internal id is a separate, opaque value never exposed to
 	// or accepted from a caller (specs/secret-objects/spec.md's
 	// "Internal id decoupled from user-facing slug" requirement).
@@ -524,7 +530,10 @@ type ObjectMetadata struct {
 	KeepReadableCopy *KeepReadableCopy `json:"keep_readable_copy,omitempty"`
 
 	// Slug A caller-chosen, unique identifier for an object - what every
-	// documented request path (URL, CLI, API) addresses it by. The
+	// documented request path (URL, CLI, API) addresses it by. Letters of
+	// either case, digits, `_` and `-`, starting with a letter or digit;
+	// names are case-sensitive, so `Api_Token` and `api_token` are two
+	// secrets. Create and rename follow the same rule. The
 	// object's internal id is a separate, opaque value never exposed to
 	// or accepted from a caller (specs/secret-objects/spec.md's
 	// "Internal id decoupled from user-facing slug" requirement).
@@ -556,7 +565,10 @@ type ObjectMetadata struct {
 }
 
 // ObjectSlug A caller-chosen, unique identifier for an object - what every
-// documented request path (URL, CLI, API) addresses it by. The
+// documented request path (URL, CLI, API) addresses it by. Letters of
+// either case, digits, `_` and `-`, starting with a letter or digit;
+// names are case-sensitive, so `Api_Token` and `api_token` are two
+// secrets. Create and rename follow the same rule. The
 // object's internal id is a separate, opaque value never exposed to
 // or accepted from a caller (specs/secret-objects/spec.md's
 // "Internal id decoupled from user-facing slug" requirement).
@@ -869,7 +881,10 @@ type PageLimit = int32
 type PageOffset = int32
 
 // Slug A caller-chosen, unique identifier for an object - what every
-// documented request path (URL, CLI, API) addresses it by. The
+// documented request path (URL, CLI, API) addresses it by. Letters of
+// either case, digits, `_` and `-`, starting with a letter or digit;
+// names are case-sensitive, so `Api_Token` and `api_token` are two
+// secrets. Create and rename follow the same rule. The
 // object's internal id is a separate, opaque value never exposed to
 // or accepted from a caller (specs/secret-objects/spec.md's
 // "Internal id decoupled from user-facing slug" requirement).
