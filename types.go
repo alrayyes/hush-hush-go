@@ -7,13 +7,17 @@ import "github.com/alrayyes/hush-hush-go/v4/internal/genclient"
 // outside this module depends on its shape. See CONTRIBUTING.md's "How it
 // fits together".
 type (
-	// ObjectMetadata is returned by CreateObject, UpdateObject, and
-	// GetObjectUsedBy.
+	// ObjectMetadata is returned by CreateObject, UpdateObject, PatchObject
+	// and GetObjectUsedBy.
 	ObjectMetadata = genclient.ObjectMetadata
 	// CreateObjectRequest is the payload for CreateObject.
 	CreateObjectRequest = genclient.CreateObjectRequest
 	// UpdateObjectRequest is the payload for UpdateObject.
 	UpdateObjectRequest = genclient.UpdateObjectRequest
+	// PatchObjectRequest is the payload for PatchObject. Its fields are
+	// pointers: nil leaves a field alone, and an empty description or tag list
+	// clears it.
+	PatchObjectRequest = genclient.PatchObjectRequest
 	// UsedBy is returned by GetObjectUsedBy.
 	UsedBy = genclient.UsedBy
 	// ConsumerEntry is one directory entry returned by ListConsumers (its

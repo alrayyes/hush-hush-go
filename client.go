@@ -140,7 +140,7 @@ func (c *Client) GetOwnerIdentity(ctx context.Context) (*OwnerIdentity, error) {
 }
 
 // ObjectOption adjusts one call that addresses an existing object by name:
-// GetObject, UpdateObject, DeleteObject and GetObjectUsedBy.
+// GetObject, UpdateObject, PatchObject, DeleteObject and GetObjectUsedBy.
 type ObjectOption func(*objectConfig)
 
 type objectConfig struct {
@@ -248,6 +248,34 @@ func (c *Client) UpdateObject(ctx context.Context, id string, req UpdateObjectRe
 		params.XCaller = &caller
 	}
 	resp, err := c.api.UpdateObjectWithResponse(ctx, id, params, req, c.authEditor)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode() != http.StatusOK || resp.JSON200 == nil {
+		return nil, newAPIError(resp.StatusCode(), resp.HTTPResponse.Header, resp.Body)
+	}
+	return resp.JSON200, nil
+}
+
+// PatchObject changes an object's description, tags or slug without touching
+// its sealed value, so fixing a typo or renaming never needs the plaintext.
+// A field left nil stays as it is, and at least one is required (an empty
+// request is the server's 400). A new Slug renames every variant of the name,
+// and one that already exists is a 409 *APIError. A name with several
+// variants is a 409 too unless WithVariantID or WithConsumer picks one, even
+// for a pure rename. Description and tags apply to the variant addressed,
+// which the returned metadata describes. Needs hush-hush v3.10.0 or later.
+// Requires a credential.
+func (c *Client) PatchObject(ctx context.Context, id string, req PatchObjectRequest, caller string, opts ...ObjectOption) (*ObjectMetadata, error) {
+	sel, err := variantParams(opts)
+	if err != nil {
+		return nil, err
+	}
+	params := &genclient.PatchObjectParams{Id: sel.id, Consumer: sel.consumer}
+	if caller != "" {
+		params.XCaller = &caller
+	}
+	resp, err := c.api.PatchObjectWithResponse(ctx, id, params, req, c.authEditor)
 	if err != nil {
 		return nil, err
 	}
