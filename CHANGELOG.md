@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.7.0](https://github.com/alrayyes/hush-hush-go/compare/v4.6.2...v4.7.0) (2026-10-14)
+
+
+### Features
+
+* **client:** add PatchObject for PATCH /objects/{slug} ([#276](https://github.com/alrayyes/hush-hush-go/issues/276)) ([7184ffa](https://github.com/alrayyes/hush-hush-go/commit/7184ffa4160c4a307feb43dedd505340d9699799))
+
 ## [4.6.2](https://github.com/alrayyes/hush-hush-go/compare/v4.6.1...v4.6.2) (2026-10-13)
 
 
