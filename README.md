@@ -90,7 +90,8 @@ and return the whole list, so nothing is cut off however many objects there are.
 `ListObjectsFilter` to narrow by tag too, where an object must carry every tag
 listed. `GetOwnerIdentity` returns the owner's escrowed public key, which a
 client adds as a recipient before sealing to honor `keep_readable_copy`; it
-works with an API key and needs hush-hush v2.54.0 or later. Consumer read tokens
+works with an API key and needs hush-hush v2.54.0 or later. `PatchObject` needs
+v3.10.0 or later. Consumer read tokens
 (`CreateConsumerToken`, `ListConsumerTokens`, `RotateConsumerToken`,
 `RevokeConsumerToken`, `PurgeConsumerToken`) always require a credential too,
 the same as the consumer directory — this client's own bearer credential may

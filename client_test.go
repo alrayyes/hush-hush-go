@@ -4,10 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"reflect"
+	"strings"
 	"testing"
 
 	hushhush "github.com/alrayyes/hush-hush-go/v4"
@@ -624,8 +626,35 @@ func TestClient_PatchObject_AddressesAVariantAndSurfacesTheServersRefusal(t *tes
 		t.Errorf("id = %q, want %q", gotID, variantA)
 	}
 
-	_, _ = client.PatchObject(context.Background(), "release_token", hushhush.PatchObjectRequest{}, "", hushhush.WithConsumer("ci"))
+	_, err = client.PatchObject(context.Background(), "release_token", hushhush.PatchObjectRequest{}, "", hushhush.WithConsumer("ci"))
+	if !errors.As(err, &apiErr) || apiErr.StatusCode != http.StatusBadRequest {
+		t.Fatalf("err = %v, want a 400 *APIError", err)
+	}
 	if gotConsumer != "ci" {
 		t.Errorf("consumer = %q, want ci", gotConsumer)
+	}
+}
+
+func TestClient_PatchObject_SendsAnEmptyDescriptionAndTagListSoTheyClear(t *testing.T) {
+	var raw string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, _ := io.ReadAll(r.Body)
+		raw = string(b)
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(hushhush.ObjectMetadata{Slug: "release_token"})
+	}))
+	defer srv.Close()
+
+	client, err := hushhush.NewClient(srv.URL, hushhush.WithAPIKey("k"))
+	if err != nil {
+		t.Fatalf("NewClient: %v", err)
+	}
+
+	empty := ""
+	if _, err := client.PatchObject(context.Background(), "release_token", hushhush.PatchObjectRequest{Description: &empty, Tags: &[]string{}}, ""); err != nil {
+		t.Fatalf("PatchObject: %v", err)
+	}
+	if !strings.Contains(raw, `"description":""`) || !strings.Contains(raw, `"tags":[]`) {
+		t.Errorf("body = %s, want description \"\" and tags []", raw)
 	}
 }

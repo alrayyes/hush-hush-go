@@ -261,8 +261,11 @@ func (c *Client) UpdateObject(ctx context.Context, id string, req UpdateObjectRe
 // its sealed value, so fixing a typo or renaming never needs the plaintext.
 // A field left nil stays as it is, and at least one is required (an empty
 // request is the server's 400). A new Slug renames every variant of the name,
-// and one that already exists is a 409 *APIError. The returned metadata
-// describes the variant addressed. Requires a credential.
+// and one that already exists is a 409 *APIError. A name with several
+// variants is a 409 too unless WithVariantID or WithConsumer picks one, even
+// for a pure rename. Description and tags apply to the variant addressed,
+// which the returned metadata describes. Needs hush-hush v3.10.0 or later.
+// Requires a credential.
 func (c *Client) PatchObject(ctx context.Context, id string, req PatchObjectRequest, caller string, opts ...ObjectOption) (*ObjectMetadata, error) {
 	sel, err := variantParams(opts)
 	if err != nil {
