@@ -70,32 +70,31 @@ func main() {
 }
 ```
 
-The API key is only required for write operations (create/update/delete);
+The API key is only required for write operations (create/update/patch/delete);
 reads (get, used-by, audit-log query) work without one. `caller`, the last
 argument to most methods, is optional — pass `""` to leave it unset.
 A name can hold a different value per consumer, each under its own UUID
-(`ObjectMetadata.Id`). `GetObject`, `UpdateObject`, `DeleteObject` and
-`GetObjectUsedBy` take `hushhush.WithVariantID(id)` to address one of them;
-without it, a name with several variants is a 409 `*APIError`, and an ID that
-doesn't belong to the name is a 404. `hushhush.WithConsumer(name)` picks the
-variant that names a consumer instead, when the UUID isn't to hand; a consumer
-no variant names is a 404, and giving both options is the server's 400. The
-consumer directory (`ListConsumers`, `AddConsumer`, `UpdateConsumer`,
-`DeleteConsumer`, and `GetConsumerPublicKey` for resolving one consumer's
-registered age public key by exact name) always requires a credential, the
-same as `ListObjects` — listing needs no ID the caller already holds.
-Both list calls read the server a page of 500 at a time and return the whole
-list, so nothing is cut off however many objects there are. `ListObjects`
-narrows by consumer; `ListObjectsFiltered` takes a `ListObjectsFilter` to
-narrow by tag too, where an object must carry every tag listed.
-`GetOwnerIdentity` returns the owner's escrowed public key, which a client adds
-as a recipient before sealing to honor `keep_readable_copy`; it works with an
-API key and needs hush-hush v2.54.0 or later.
-Consumer read tokens (`CreateConsumerToken`, `ListConsumerTokens`,
-`RotateConsumerToken`, `RevokeConsumerToken`, `PurgeConsumerToken`) always
-require a credential too, the same as the consumer directory — this
-client's own bearer credential may mint, list, rotate, revoke, or purge
-one, not only an administrator session. See
+(`ObjectMetadata.Id`). `GetObject`, `UpdateObject`, `PatchObject`,
+`DeleteObject` and `GetObjectUsedBy` take `hushhush.WithVariantID(id)` to
+address one of them; without it, a name with several variants is a 409
+`*APIError`, and an ID that doesn't belong to the name is a 404.
+`hushhush.WithConsumer(name)` picks the variant that names a consumer instead,
+when the UUID isn't to hand; a consumer no variant names is a 404, and giving
+both options is the server's 400. The consumer directory (`ListConsumers`,
+`AddConsumer`, `UpdateConsumer`, `DeleteConsumer`, and `GetConsumerPublicKey`
+for resolving one consumer's registered age public key by exact name) always
+requires a credential, the same as `ListObjects` — listing needs no ID the
+caller already holds. Both list calls read the server a page of 500 at a time
+and return the whole list, so nothing is cut off however many objects there are.
+`ListObjects` narrows by consumer; `ListObjectsFiltered` takes a
+`ListObjectsFilter` to narrow by tag too, where an object must carry every tag
+listed. `GetOwnerIdentity` returns the owner's escrowed public key, which a
+client adds as a recipient before sealing to honor `keep_readable_copy`; it
+works with an API key and needs hush-hush v2.54.0 or later. Consumer read tokens
+(`CreateConsumerToken`, `ListConsumerTokens`, `RotateConsumerToken`,
+`RevokeConsumerToken`, `PurgeConsumerToken`) always require a credential too,
+the same as the consumer directory — this client's own bearer credential may
+mint, list, rotate, revoke, or purge one, not only an administrator session. See
 [GoDoc](https://pkg.go.dev/github.com/alrayyes/hush-hush-go) for the full API
 surface.
 

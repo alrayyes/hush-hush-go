@@ -563,3 +563,69 @@ func TestClient_Consumer_NoVariantNamingItComesBackAsA404(t *testing.T) {
 		t.Fatalf("err = %v, want a 404 *APIError", err)
 	}
 }
+
+func TestClient_PatchObject_SendsOnlyTheGivenFieldsAndReturnsTheMetadata(t *testing.T) {
+	var gotMethod, gotPath, gotCaller string
+	var gotBody map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod, gotPath, gotCaller = r.Method, r.URL.Path, r.Header.Get("X-Caller")
+		_ = json.NewDecoder(r.Body).Decode(&gotBody)
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(hushhush.ObjectMetadata{Slug: "renamed"})
+	}))
+	defer srv.Close()
+
+	client, err := hushhush.NewClient(srv.URL, hushhush.WithAPIKey("k"))
+	if err != nil {
+		t.Fatalf("NewClient: %v", err)
+	}
+
+	label := "new label"
+	slug := "renamed"
+	got, err := client.PatchObject(context.Background(), "release_token", hushhush.PatchObjectRequest{Description: &label, Slug: &slug}, "ci")
+	if err != nil {
+		t.Fatalf("PatchObject: %v", err)
+	}
+	if gotMethod != http.MethodPatch || gotPath != "/objects/release_token" {
+		t.Errorf("sent %s %s, want PATCH /objects/release_token", gotMethod, gotPath)
+	}
+	if gotCaller != "ci" {
+		t.Errorf("X-Caller = %q, want ci", gotCaller)
+	}
+	if _, ok := gotBody["tags"]; ok || gotBody["description"] != "new label" || gotBody["slug"] != "renamed" {
+		t.Errorf("body = %v, want only description and slug", gotBody)
+	}
+	if got.Slug != "renamed" {
+		t.Errorf("returned %+v", got)
+	}
+}
+
+func TestClient_PatchObject_AddressesAVariantAndSurfacesTheServersRefusal(t *testing.T) {
+	var gotID, gotConsumer string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotID, gotConsumer = r.URL.Query().Get("id"), r.URL.Query().Get("consumer")
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{"error":"at least one of description, slug or tags is required"}`))
+	}))
+	defer srv.Close()
+
+	client, err := hushhush.NewClient(srv.URL, hushhush.WithAPIKey("k"))
+	if err != nil {
+		t.Fatalf("NewClient: %v", err)
+	}
+
+	_, err = client.PatchObject(context.Background(), "release_token", hushhush.PatchObjectRequest{}, "", hushhush.WithVariantID(variantA))
+	var apiErr *hushhush.APIError
+	if !errors.As(err, &apiErr) || apiErr.StatusCode != http.StatusBadRequest {
+		t.Fatalf("err = %v, want a 400 *APIError", err)
+	}
+	if gotID != variantA {
+		t.Errorf("id = %q, want %q", gotID, variantA)
+	}
+
+	_, _ = client.PatchObject(context.Background(), "release_token", hushhush.PatchObjectRequest{}, "", hushhush.WithConsumer("ci"))
+	if gotConsumer != "ci" {
+		t.Errorf("consumer = %q, want ci", gotConsumer)
+	}
+}
