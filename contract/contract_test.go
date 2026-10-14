@@ -301,8 +301,10 @@ func TestContract_PatchObject_EmptyRequestIsRefused(t *testing.T) {
 
 	_, err := client.PatchObject(context.Background(), "contract-test-object", hushhush.PatchObjectRequest{}, "")
 
+	// The spec requires at least one field; Prism answers a body that breaks
+	// that with its validation status, 422.
 	var apiErr *hushhush.APIError
-	if !errors.As(err, &apiErr) || (apiErr.StatusCode != http.StatusUnprocessableEntity && apiErr.StatusCode != http.StatusBadRequest) {
-		t.Fatalf("err = %v, want the spec's 4xx as an *APIError", err)
+	if !errors.As(err, &apiErr) || apiErr.StatusCode != http.StatusUnprocessableEntity {
+		t.Fatalf("err = %v, want a 422 *APIError", err)
 	}
 }
