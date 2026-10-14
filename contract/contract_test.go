@@ -10,6 +10,7 @@ package contract
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"os"
 	"testing"
@@ -259,5 +260,49 @@ func TestContract_ConsumerTokenLifecycle(t *testing.T) {
 
 	if err := client.PurgeConsumerToken(ctx, created.Id); err != nil {
 		t.Fatalf("PurgeConsumerToken: %v", err)
+	}
+}
+
+func TestContract_PatchObject(t *testing.T) {
+	client := mustClient(t)
+	ctx := context.Background()
+
+	description := "a new label"
+	slug := "contract-test-renamed"
+	tags := []string{"homelab"}
+
+	got, err := client.PatchObject(ctx, "contract-test-object", hushhush.PatchObjectRequest{
+		Description: &description,
+		Slug:        &slug,
+		Tags:        &tags,
+	}, "hush-hush-go-contract-test")
+	if err != nil {
+		t.Fatalf("PatchObject: %v", err)
+	}
+	if got == nil || got.Slug == "" {
+		t.Errorf("PatchObject returned %+v, want the object's metadata", got)
+	}
+}
+
+func TestContract_PatchObject_AddressesAVariant(t *testing.T) {
+	client := mustClient(t)
+
+	description := "a new label"
+	_, err := client.PatchObject(context.Background(), "contract-test-object",
+		hushhush.PatchObjectRequest{Description: &description}, "",
+		hushhush.WithVariantID("0b8e1c1e-3f5a-4d0b-8a1f-2c9d7e6b5a41"))
+	if err != nil {
+		t.Fatalf("PatchObject with a variant id: %v", err)
+	}
+}
+
+func TestContract_PatchObject_EmptyRequestIsRefused(t *testing.T) {
+	client := mustClient(t)
+
+	_, err := client.PatchObject(context.Background(), "contract-test-object", hushhush.PatchObjectRequest{}, "")
+
+	var apiErr *hushhush.APIError
+	if !errors.As(err, &apiErr) || (apiErr.StatusCode != http.StatusUnprocessableEntity && apiErr.StatusCode != http.StatusBadRequest) {
+		t.Fatalf("err = %v, want the spec's 4xx as an *APIError", err)
 	}
 }
