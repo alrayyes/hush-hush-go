@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.7.9](https://github.com/alrayyes/hush-hush-go/compare/v4.7.8...v4.7.9) (2026-10-15)
+
+
+### Bug Fixes
+
+* **ci:** run release-auto-merge when the autorelease label is added ([#298](https://github.com/alrayyes/hush-hush-go/issues/298)) ([b3ed8f9](https://github.com/alrayyes/hush-hush-go/commit/b3ed8f9af88c27d477085ed7ad366c52585438aa)), closes [#297](https://github.com/alrayyes/hush-hush-go/issues/297)
+
 ## [4.7.8](https://github.com/alrayyes/hush-hush-go/compare/v4.7.7...v4.7.8) (2026-10-15)
 
 
