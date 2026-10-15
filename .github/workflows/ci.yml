@@ -161,22 +161,37 @@ jobs:
             exit 1
           fi
 
-  # Pinning a dependency stops it drifting; it says nothing about the
-  # pinned version having a known CVE since. Separate from the update pull
-  # request Dependabot raises - this runs on every push, whatever's pinned
-  # right now. Every other repo in the family already has an equivalent
-  # (composer audit/pip-audit/npm audit/govulncheck); this repo was the
-  # one gap.
+  # Fails only on advisories this change adds over its base (rules/dependencies.md).
+  # What is already on main is the scan's to track, in advisory-scan.yml. The check
+  # always reports so it can stay required; its steps run only when a pull request
+  # changes Go code, the manifest or the lockfile, and always on a push to main.
   govulncheck:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          fetch-depth: 0
+      - id: deps
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ "$EVENT" != pull_request ] || git diff --name-only "$BASE" HEAD | grep -qE '(^(go\.mod|go\.sum|\.github/workflows/ci\.yml)$|\.go$)'; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.deps.outputs.run == 'true'
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
-      - run: go install golang.org/x/vuln/cmd/govulncheck@v1.7.0
-      - run: govulncheck ./...
+      # Pinned to a main commit of alrayyes/advisory-scan until its first release; re-pin then.
+      - if: steps.deps.outputs.run == 'true'
+        uses: alrayyes/advisory-scan@425418a63e80eb10142fbd2e82127b7ef3a51d68
+        with:
+          mode: gate
+          command: go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./...
 
   # Proves the generated client wasn't hand-edited: regenerating from the
   # pinned submodule commit must produce a byte-identical file. See
