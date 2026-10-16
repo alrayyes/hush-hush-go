@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.7.10](https://github.com/alrayyes/hush-hush-go/compare/v4.7.9...v4.7.10) (2026-10-16)
+
+
+### Bug Fixes
+
+* **deps:** bump github.com/getkin/kin-openapi from 0.144.0 to 0.149.0 ([#301](https://github.com/alrayyes/hush-hush-go/issues/301)) ([8e1434d](https://github.com/alrayyes/hush-hush-go/commit/8e1434d5ccd727de38bef2c02720c8e8992fc588))
+
 ## [4.7.9](https://github.com/alrayyes/hush-hush-go/compare/v4.7.8...v4.7.9) (2026-10-15)
 
 
