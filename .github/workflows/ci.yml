@@ -187,7 +187,7 @@ jobs:
         with:
           go-version-file: go.mod
       - if: steps.deps.outputs.run == 'true'
-        uses: alrayyes/advisory-scan@9801551dad16ce63853b2babfda885365d368232 # v0.3.0
+        uses: alrayyes/advisory-scan@c9f794de4354b870e159510f036779baf20f4a2f # v0.3.1
         with:
           mode: gate
           command: go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./...
