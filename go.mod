@@ -9,7 +9,7 @@ tool (
 )
 
 require (
-	github.com/oapi-codegen/runtime v1.8.0
+	github.com/oapi-codegen/runtime v1.9.0
 	github.com/pact-foundation/pact-go/v2 v2.9.0
 )
 
